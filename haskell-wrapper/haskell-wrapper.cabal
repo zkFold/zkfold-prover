@@ -1,0 +1,48 @@
+cabal-version:      3.0
+name:               haskell-wrapper
+version:            0.1.0.0
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             ZkFold
+maintainer:         info@zkfold.io
+category:           Network
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+
+library
+  exposed-modules:
+      Functions
+  hs-source-dirs:
+      src
+  build-depends:
+    , base >= 4.16
+    , aeson
+    , borsh
+    , bytestring
+    , foreign-rust
+    , generics-sop
+    , text
+    , zkfold-base
+  build-tool-depends:
+      c2hs:c2hs
+  pkgconfig-depends:
+      rust_wrapper-uninstalled
+  default-extensions:
+    ForeignFunctionInterface
+    DataKinds
+    DeriveAnyClass
+    DerivingStrategies
+    DerivingVia
+    TypeFamilies
+    UndecidableInstances
+
+executable demo
+  main-is:
+      Main.hs
+  build-depends:
+    , base >= 4.16
+    , haskell-wrapper
+    , foreign-rust
+    , zkfold-base
+  pkgconfig-depends:
+      rust_wrapper-uninstalled
