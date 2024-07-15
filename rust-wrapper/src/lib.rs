@@ -2,6 +2,7 @@ use std::io::Write;
 use std::marker::PhantomData;
 
 use num_bigint::BigUint;
+use num_traits::cast::ToPrimitive;
 
 use haskell_ffi::error::Result;
 use haskell_ffi::to_haskell::marshall_to_haskell_var;
@@ -18,37 +19,38 @@ pub enum RW {}
 /// cbindgen:ignore
 pub const RW: PhantomData<RW> = PhantomData;
 
-// TODO: deserialize from BigUint
+// ScalarField ~ Fp<MontBackend<FrConfig, 4>, 4>
+
 impl FromHaskell<RW> for ScalarField {
     fn from_haskell(buf: &mut &[u8], tag: PhantomData<RW>) -> Result<Self> {
-        let x = <[u64; 4]>::from_haskell(buf, tag)?;
-        let f = PrimeField::from_bigint(BigInt::new(x)).unwrap();
+        let x = <u64>::from_haskell(buf, tag)?;
+        let f = PrimeField::from_bigint(BigInt::<4>::try_from(BigUint::from(x)).unwrap()).unwrap();
         Ok(f)
     }
 }
 
 impl ToHaskell<RW> for ScalarField {
     fn to_haskell<W: Write>(&self, writer: &mut W, tag: PhantomData<RW>) -> Result<()> {
-        // self.into_bigint().0.to_haskell(writer, tag)
-        BigUint::from(self.into_bigint()).to_bytes_le().to_haskell(writer, tag)
+        BigUint::from(self.into_bigint()).to_u64().to_haskell(writer, tag)
     }
 }
 
-// TODO: deserialize from BigUint
 impl FromHaskell<RW> for GAffine {
     fn from_haskell(buf: &mut &[u8], tag: PhantomData<RW>) -> Result<Self> {
-        let (x, y) = <([u64; 6], [u64; 6])>::from_haskell(buf, tag)?;
-        Ok(GAffine::new(BigInt::new(x).into(), BigInt::new(y).into()))
+        let (x, y) = <(u64, u64)>::from_haskell(buf, tag)?;
+        let x_ = BigInt::<6>::try_from(BigUint::from(x)).unwrap();
+        let y_ = BigInt::<6>::try_from(BigUint::from(y)).unwrap();
+        let x__ = PrimeField::from_bigint(x_).unwrap();
+        let y__ = PrimeField::from_bigint(y_).unwrap();
+        Ok(GAffine::new(x__, y__))
     }
 }
 
-// TODO: serialize to BigUint
 impl ToHaskell<RW> for GAffine {
     fn to_haskell<W: Write>(&self, writer: &mut W, tag: PhantomData<RW>) -> Result<()> {
-        let x = self.x().unwrap().into_bigint().0;
-        let y = self.y().unwrap().into_bigint().0;
-        (x, y).to_haskell(writer, tag)?;
-        Ok(())
+        let x = BigUint::from(self.x().unwrap().into_bigint());
+        let y = BigUint::from(self.y().unwrap().into_bigint());
+        (x.to_u64(), y.to_u64()).to_haskell(writer, tag)
     }
 }
 
