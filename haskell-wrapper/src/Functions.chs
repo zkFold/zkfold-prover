@@ -42,6 +42,9 @@ instance BorshSize (Point BLS12_381_G1) where
 instance ToBorsh (Point BLS12_381_G1) where
    encodeBorsh = (\(Point x y) -> (x, y)) >$< encodeBorsh @(Fq, Fq)
 
+instance FromBorsh (Point BLS12_381_G1) where
+   decodeBorsh = (\(x, y) -> Point x y) <$> decodeBorsh @(Fq, Fq)
+
 {# fun pure unsafe rust_wrapper_add as rustWrapperAdd
      { `Word64'
      , `Word64'
