@@ -9,9 +9,26 @@ category:           Network
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
 
+common common-extensions
+  default-extensions:
+    ForeignFunctionInterface
+    DataKinds
+    DeriveAnyClass
+    DerivingStrategies
+    DerivingVia
+    TypeFamilies
+    UndecidableInstances
+    TypeOperators
+    ScopedTypeVariables
+    TypeApplications
+    AllowAmbiguousTypes
+
 library
+  import: common-extensions
   exposed-modules:
       Functions
+    , Pack
+    , RustFunctions
   hs-source-dirs:
       src
   build-depends:
@@ -27,16 +44,9 @@ library
       c2hs:c2hs
   pkgconfig-depends:
       rust_wrapper-uninstalled
-  default-extensions:
-    ForeignFunctionInterface
-    DataKinds
-    DeriveAnyClass
-    DerivingStrategies
-    DerivingVia
-    TypeFamilies
-    UndecidableInstances
 
 executable demo
+  import: common-extensions
   main-is:
       Main.hs
   build-depends:
@@ -46,3 +56,20 @@ executable demo
     , zkfold-base
   pkgconfig-depends:
       rust_wrapper-uninstalled
+
+test-suite wrapper-test
+  import: common-extensions
+  main-is: Main.hs
+  type: exitcode-stdio-1.0
+  hs-source-dirs: tests
+  other-modules: 
+    ScalarSum
+    MultiScalarMultiplication  
+  build-depends:
+    , base >= 4.16
+    , foreign-rust
+    , zkfold-base
+    , bytestring
+    , haskell-wrapper
+    , hspec                                < 2.12
+    , QuickCheck
