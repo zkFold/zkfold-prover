@@ -22,3 +22,5 @@ cabal.project.local~
 .HTF/
 .ghc.environment.*
 rust-wrapper/target/
+rust-wrapper/Cargo.lock
+rust-wrapper/haskell-wrapper/cbits/rust-wrapper.h
