@@ -12,6 +12,7 @@ import           ZkFold.Base.Algebra.Basic.Class             (AdditiveSemigroup 
 import           ZkFold.Base.Algebra.Basic.Field             (Zp)
 import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_Base, BLS12_381_G1, BLS12_381_Scalar)
 import           ZkFold.Base.Algebra.EllipticCurve.Class     (EllipticCurve (BaseField, ScalarField, mul), Point)
+import Test.QuickCheck.Property (withMaxSuccess)
 
 specMultiScalarMultiplication
     :: forall
@@ -28,7 +29,7 @@ specMultiScalarMultiplication
 specMultiScalarMultiplication = hspec $ do
     describe "Rust binary scalar mulitply specification" $ do
         it "should be equal to haskell" $ do
-            property $
+            property $ withMaxSuccess 200 $ 
               \
                (p1 :: Point a)
                (p2 :: Point a)

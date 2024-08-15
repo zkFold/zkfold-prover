@@ -6,22 +6,29 @@ license-file:       LICENSE
 author:             ZkFold
 maintainer:         info@zkfold.io
 category:           Network
-build-type:         Simple
+build-type:         Custom
 extra-doc-files:    CHANGELOG.md
 
+custom-setup
+  setup-depends:       
+      base
+    , Cabal
+    , process
+
 common common-extensions
-  default-extensions:
-    ForeignFunctionInterface
-    DataKinds
-    DeriveAnyClass
-    DerivingStrategies
-    DerivingVia
-    TypeFamilies
-    UndecidableInstances
-    TypeOperators
-    ScopedTypeVariables
-    TypeApplications
-    AllowAmbiguousTypes
+    default-language: Haskell2010
+    default-extensions:
+        ForeignFunctionInterface
+        DataKinds
+        DeriveAnyClass
+        DerivingStrategies
+        DerivingVia
+        TypeFamilies
+        UndecidableInstances
+        TypeOperators
+        ScopedTypeVariables
+        TypeApplications
+        AllowAmbiguousTypes
 
 library
   import: common-extensions
@@ -30,7 +37,7 @@ library
     , Pack
     , RustFunctions
   hs-source-dirs:
-      src
+      haskell-wrapper/src
   build-depends:
     , base >= 4.16
     , aeson
@@ -48,20 +55,18 @@ library
 executable demo
   import: common-extensions
   main-is:
-      Main.hs
+      haskell-wrapper/Main.hs
   build-depends:
     , base >= 4.16
     , haskell-wrapper
     , foreign-rust
     , zkfold-base
-  pkgconfig-depends:
-      rust_wrapper-uninstalled
 
 test-suite wrapper-test
   import: common-extensions
   main-is: Main.hs
   type: exitcode-stdio-1.0
-  hs-source-dirs: tests
+  hs-source-dirs: haskell-wrapper/tests
   other-modules: 
     ScalarSum
     MultiScalarMultiplication  
@@ -73,3 +78,4 @@ test-suite wrapper-test
     , haskell-wrapper
     , hspec                                < 2.12
     , QuickCheck
+

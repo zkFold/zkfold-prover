@@ -1,4 +1,4 @@
-packages: haskell-wrapper
+packages: .
 
 source-repository-package
   type: git
@@ -8,5 +8,4 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/zkFold/zkfold-base.git
-  tag: 853df1e683ef997b2ace62bee09da4a97bdc4612
-  optimization: 2
+  tag: cc47d2b6e889955081d410c01774de02bb333721
