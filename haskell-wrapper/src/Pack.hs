@@ -1,3 +1,5 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TypeOperators       #-}
 module Pack
     ( packPoint
     , unpackPoint
@@ -5,13 +7,14 @@ module Pack
     , unpackScalar
     ) where
 
-import           Data.Bits                               (Bits (bit, clearBit, testBit, (.&.)))
+import           Data.Bits                               (Bits (bit, clearBit, testBit))
 import qualified Data.ByteString                         as BS
 import           Data.Kind                               (Type)
 import           Data.Maybe                              (fromJust)
 import           Data.Word                               (Word8)
 import           GHC.TypeNats                            (KnownNat)
 import           Numeric.Natural                         (Natural)
+import           Prelude
 
 import           ZkFold.Base.Algebra.Basic.Field         (Zp, fromZp, toZp)
 import           ZkFold.Base.Algebra.EllipticCurve.Class (EllipticCurve (BaseField, ScalarField), Point (Inf, Point))
@@ -33,10 +36,9 @@ packScalar
     :: forall
         (a :: Type)
         (b :: Natural)
-    .   ( EllipticCurve a
-        , ScalarField a ~ Zp b
+    .   ( ScalarField a ~ Zp b
         )
-    => ScalarField a
+    =>ScalarField a
     -> BS.ByteString
 packScalar x = packNat 32 (fromZp x)
 
@@ -44,11 +46,10 @@ unpackScalar
     :: forall
         (a :: Type)
         (b :: Natural)
-    .   ( EllipticCurve a
-        , ScalarField a ~ Zp b
+    .   ( ScalarField a ~ Zp b
         , KnownNat b
         )
-    => BS.ByteString
+    =>BS.ByteString
     -> ScalarField a
 unpackScalar bs = (toZp @b) $ toInteger $ unpackNat bs
 
@@ -56,11 +57,9 @@ packPoint
     :: forall
         (a :: Type)
         (b :: Natural)
-    .   ( EllipticCurve a
-        , BaseField a ~ Zp b
-        , KnownNat b
+    .   ( BaseField a ~ Zp b
         )
-    => Point a
+    =>Point a
     -> BS.ByteString
 packPoint Inf         = BS.snoc (BS.replicate 95 0) (bit 6)
 packPoint (Point x y) = packNat 48 (fromZp x) <> packNat 48 (fromZp y)
@@ -69,11 +68,10 @@ unpackPoint
     :: forall
         (a :: Type)
         (b :: Natural)
-    .   ( EllipticCurve a
-        , BaseField a ~ Zp b
+    .   ( BaseField a ~ Zp b
         , KnownNat b
         )
-    => BS.ByteString
+    =>BS.ByteString
     -> Point a
 unpackPoint bs = if isInfinity then Inf @a else Point @a x y
   where
@@ -91,9 +89,6 @@ unpackPoint bs = if isInfinity then Inf @a else Point @a x y
 
     isInfinity :: Bool
     isInfinity = testBit lastByte 6
-
-    isNegative :: Bool
-    isNegative = testBit lastByte 7
 
     dropFlags :: Word8
     dropFlags = clearBit lastByte 7

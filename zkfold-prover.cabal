@@ -6,7 +6,7 @@ license-file:       LICENSE
 author:             ZkFold
 maintainer:         info@zkfold.io
 category:           Network
-build-type:         Custom
+build-type:         Simple
 extra-doc-files:    CHANGELOG.md
 
 custom-setup
@@ -15,23 +15,70 @@ custom-setup
     , Cabal
     , process
 
-common common-extensions
+Flag Pedantic
+    Description: Enable pedantic build with -Werror
+    Manual: True
+    Default: False
+
+common options
     default-language: Haskell2010
+    ghc-options:
+      -fwarn-redundant-constraints
+      -Wall
+      -Wcompat
+      -Widentities
+      -Wincomplete-record-updates
+      -Wincomplete-uni-patterns
+      -Wnoncanonical-monad-instances
+      -Wpartial-fields
+      -Wredundant-constraints
+      -O2
+      -threaded
+    if flag(pedantic)
+      ghc-options:
+        -Werror
     default-extensions:
-        ForeignFunctionInterface
-        DataKinds
-        DeriveAnyClass
-        DerivingStrategies
-        DerivingVia
-        TypeFamilies
-        UndecidableInstances
-        TypeOperators
-        ScopedTypeVariables
-        TypeApplications
-        AllowAmbiguousTypes
+      BangPatterns,
+      BinaryLiterals,
+      ConstraintKinds,
+      DataKinds,
+      DefaultSignatures,
+      DeriveDataTypeable,
+      DeriveFoldable,
+      DeriveFunctor,
+      DeriveGeneric,
+      DeriveTraversable,
+      ExistentialQuantification,
+      FlexibleContexts,
+      FlexibleInstances,
+      FunctionalDependencies,
+      GADTs,
+      GeneralizedNewtypeDeriving,
+      InstanceSigs,
+      KindSignatures,
+      LambdaCase,
+      MultiParamTypeClasses,
+      MultiWayIf,
+      NamedFieldPuns,
+      NoImplicitPrelude,
+      NoStarIsType,
+      NumericUnderscores,
+      OverloadedStrings,
+      OverloadedLabels,
+      PolyKinds,
+      RankNTypes,
+      RecordWildCards,
+      ScopedTypeVariables,
+      StandaloneDeriving,
+      StandaloneKindSignatures,
+      TupleSections,
+      TypeApplications,
+      TypeFamilies,
+      ViewPatterns
+
 
 library
-  import: common-extensions
+  import: options
   exposed-modules:
       Functions
     , Pack
@@ -40,30 +87,17 @@ library
       haskell-wrapper/src
   build-depends:
     , base >= 4.16
-    , aeson
-    , borsh
     , bytestring
     , foreign-rust
-    , generics-sop
-    , text
     , zkfold-base
+    , vector
   build-tool-depends:
       c2hs:c2hs
   pkgconfig-depends:
       rust_wrapper-uninstalled
 
-executable demo
-  import: common-extensions
-  main-is:
-      haskell-wrapper/Main.hs
-  build-depends:
-    , base >= 4.16
-    , haskell-wrapper
-    , foreign-rust
-    , zkfold-base
-
 test-suite wrapper-test
-  import: common-extensions
+  import: options
   main-is: Main.hs
   type: exitcode-stdio-1.0
   hs-source-dirs: haskell-wrapper/tests
@@ -72,10 +106,26 @@ test-suite wrapper-test
     MultiScalarMultiplication  
   build-depends:
     , base >= 4.16
-    , foreign-rust
     , zkfold-base
-    , bytestring
     , haskell-wrapper
     , hspec                                < 2.12
     , QuickCheck
+    , vector
 
+benchmark msm
+    import:           options
+    main-is:          BenchMSM.hs
+    hs-source-dirs:   bench
+    type:             exitcode-stdio-1.0
+    ghc-options:      
+      -rtsopts
+      -O3
+      -fprof-auto
+    build-depends: 
+      base, 
+      tasty-bench,
+      QuickCheck,
+      vector,
+      zkfold-base,
+      bytestring,
+      haskell-wrapper

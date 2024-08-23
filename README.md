@@ -52,10 +52,27 @@ The package compiles with GHC 9.6.3 and Cabal 3.10.2.1.
 
 Running tests:
 ```bash
-cabal run -- wrapper-test
+cabal run wrapper-test
 ```
 
-Running example in Main:
+Run benchmark:
+```bash
+cabal run msm
 ```
-cabal run haskell-wrapper/
+### Profiling and benchmarking
+
+Before you need install `ghc-prof-flamegraph`. Remember path to executable file
+```bash
+cabal install ghc-prof-flamegraph
 ```
+
+Run benchmark with .prof generating
+```bash
+cabal run msm --enable-profiling -- +RTS -p
+```
+
+Run generating flamegraph. Make sure the path to `ghc-prof-flamegraph` is correct
+```bash
+~/.local/bin/ghc-prof-flamegraph msm.prof
+```
+Flamegraph will be in `msm.svg` file
