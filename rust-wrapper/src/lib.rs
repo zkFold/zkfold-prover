@@ -2,7 +2,6 @@ use std::io::Write;
 use std::marker::PhantomData;
 
 use num_bigint::BigUint;
-use num_traits::cast::ToPrimitive;
 
 use haskell_ffi::error::Result;
 use haskell_ffi::to_haskell::marshall_to_haskell_var;
@@ -10,77 +9,104 @@ use haskell_ffi::from_haskell::marshall_from_haskell_var;
 use haskell_ffi::{FromHaskell, ToHaskell};
 
 use ark_ff::PrimeField;
-use ark_ff::biginteger::BigInt;
-use ark_ec::{AffineRepr, VariableBaseMSM};
+use ark_ec::VariableBaseMSM;
 use ark_test_curves::bls12_381::{G1Projective as G, G1Affine as GAffine, Fr as ScalarField};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 pub enum RW {}
 
-/// cbindgen:ignore
 pub const RW: PhantomData<RW> = PhantomData;
 
-// ScalarField ~ Fp<MontBackend<FrConfig, 4>, 4>
 
 impl FromHaskell<RW> for ScalarField {
-    fn from_haskell(buf: &mut &[u8], tag: PhantomData<RW>) -> Result<Self> {
-        let x = <u64>::from_haskell(buf, tag)?;
-        let f = PrimeField::from_bigint(BigInt::<4>::try_from(BigUint::from(x)).unwrap()).unwrap();
-        Ok(f)
+    fn from_haskell(buf: &mut &[u8], tag: PhantomData<RW>) -> Result<Self> {        
+        let x = <Vec<u8>>::from_haskell(buf, tag)?;
+        let s1: ScalarField = PrimeField::from_le_bytes_mod_order(&x);
+        Ok(s1)
     }
 }
 
 impl ToHaskell<RW> for ScalarField {
     fn to_haskell<W: Write>(&self, writer: &mut W, tag: PhantomData<RW>) -> Result<()> {
-        BigUint::from(self.into_bigint()).to_u64().to_haskell(writer, tag)
+        BigUint::from(self.into_bigint()).to_bytes_le().to_haskell(writer, tag)
     }
 }
 
 impl FromHaskell<RW> for GAffine {
     fn from_haskell(buf: &mut &[u8], tag: PhantomData<RW>) -> Result<Self> {
-        let (x, y) = <(u64, u64)>::from_haskell(buf, tag)?;
-        let x_ = BigInt::<6>::try_from(BigUint::from(x)).unwrap();
-        let y_ = BigInt::<6>::try_from(BigUint::from(y)).unwrap();
-        let x__ = PrimeField::from_bigint(x_).unwrap();
-        let y__ = PrimeField::from_bigint(y_).unwrap();
-        Ok(GAffine::new(x__, y__))
+        let _a = <Vec<u8>>::from_haskell(buf, tag)?;
+        let a = GAffine::deserialize_uncompressed(&*_a).unwrap();
+        Ok(a)
     }
 }
 
 impl ToHaskell<RW> for GAffine {
     fn to_haskell<W: Write>(&self, writer: &mut W, tag: PhantomData<RW>) -> Result<()> {
-        let x = BigUint::from(self.x().unwrap().into_bigint());
-        let y = BigUint::from(self.y().unwrap().into_bigint());
-        (x.to_u64(), y.to_u64()).to_haskell(writer, tag)
+        let mut res = Vec::new();
+        self.serialize_uncompressed(&mut res).unwrap();
+        res.to_haskell(writer, tag)
     }
 }
 
-pub fn scalar_mult(a: GAffine, b: GAffine, s1: ScalarField, s2: ScalarField) -> GAffine {
-    G::msm(&[a, b], &[s1, s2]).unwrap().into()
+struct Buffer<T>(Vec<T>);
+
+fn deserialize_vector<T>(vector: Vec<u8>, object_size: usize, deserialize: fn(&[u8]) -> T) -> Buffer<T> {
+    Buffer(
+        vector
+        .chunks_exact(object_size)
+        .map(|chunk| { deserialize(chunk) })
+        .collect()
+    )
+}
+
+impl FromHaskell<RW> for Buffer<ScalarField> {
+    fn from_haskell(buf: &mut &[u8], tag: PhantomData<RW>) -> Result<Self> {
+        let buffer = <Vec<u8>>::from_haskell(buf, tag)?;
+        let res = deserialize_vector(buffer, 32, PrimeField::from_le_bytes_mod_order);
+        Ok(res)
+    }
+}
+
+impl FromHaskell<RW> for Buffer<GAffine> {
+    fn from_haskell(buf: &mut &[u8], tag: PhantomData<RW>) -> Result<Self> {
+        let buffer = <Vec<u8>>::from_haskell(buf, tag)?;
+        let res = deserialize_vector(buffer, 96, 
+            |bytes| -> GAffine { GAffine::deserialize_uncompressed(&*bytes).unwrap() });
+        Ok(res)
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn rust_wrapper_add(x: u64, y: u64) -> u64 {
-    x + y
-}
-
-#[no_mangle]
-pub extern "C" fn rust_wrapper_scalar_mult
-(
+pub extern "C" fn rust_wrapper_scalar_sum(
     a_var: *const u8,
     a_len: usize,
     b_var: *const u8,
     b_len: usize,
-    s1_var: *const u8,
-    s1_len: usize,
-    s2_var: *const u8,
-    s2_len: usize,
     out: *mut u8,
     out_len: &mut usize,
 ) {
-    let a: GAffine = marshall_from_haskell_var(a_var, a_len, RW);
-    let b: GAffine = marshall_from_haskell_var(b_var, b_len, RW);
-    let s1: ScalarField = marshall_from_haskell_var(s1_var, s1_len, RW);
-    let s2: ScalarField = marshall_from_haskell_var(s2_var, s2_len, RW);
-    let r = scalar_mult(a, b, s1, s2);
+    let a: ScalarField = marshall_from_haskell_var(a_var, a_len, RW);
+    let b: ScalarField = marshall_from_haskell_var(b_var, b_len, RW);
+    let r: ScalarField = a + b;
+    marshall_to_haskell_var(&r, out, out_len, RW);
+}
+
+#[no_mangle]
+pub extern "C" fn rust_wrapper_multi_scalar_multiplication
+(
+    points_var: *const u8,
+    points_len: usize,
+    scalars_var: *const u8,
+    scalars_len: usize,
+    out: *mut u8,
+    out_len: &mut usize,
+) {
+    let scalars: Vec<ScalarField> = 
+        marshall_from_haskell_var::<RW, Buffer<ScalarField>>(scalars_var, scalars_len, RW).0;
+    let points: Vec<GAffine> = 
+        marshall_from_haskell_var::<RW, Buffer<GAffine>>(points_var, points_len, RW).0;
+
+    let r: GAffine = G::msm(&points, &scalars).unwrap().into();
+
     marshall_to_haskell_var(&r, out, out_len, RW);
 }

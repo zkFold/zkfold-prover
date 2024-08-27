@@ -1,52 +1,78 @@
 # zkFold Prover
 Optimized ZK provers
 
+### Setting up the environment
 
-```rust
-:dep ark-ec
-:dep ark-std
-:dep ark-test-curves
-:dep num-bigint
+<!-- In the comments you can find instructions for installing the required packages. The instructions were tested on an Ubuntu 24.04 virtual machine -->
 
-use ark_test_curves::bls12-381;
+<!-- Curl*
+```bash
+sudo apt install curl
+``` -->
+Install rustup and cargo (require `curl`):
 
-use num_bigint::BigUint;
-
-use ark_ec::scalar_mul::variable_base::VariableBaseMSM;
-
-let a: G1Affine = G1Affine::rand(&mut ark_std::test_rng());
-
->> (241521825108085326152546143885075698096242717769365851673777146265962830024243722276743782280873588223519920495647, 3560035591319159527750795167323375962990500740637199979279756662028071590138066280420930564248685402405154128130764)
-
-let b: G1Affine = G1Affine::rand(&mut ark_std::test_rng());
-
->> (241521825108085326152546143885075698096242717769365851673777146265962830024243722276743782280873588223519920495647, 3560035591319159527750795167323375962990500740637199979279756662028071590138066280420930564248685402405154128130764)
-
-let s1: Fr = Fr::rand(&mut ark_std::test_rng());
-
->> BigInt([12346421629811869064, 10832332258257352915, 17999185152888039383, 7443919619818212425])
-
-BigUint::from(s1)
-
->> 46726240763639862128214388288720131204625575015731614850157206947646262134152
-
-let s2: Fr = Fr::rand(&mut ark_std::test_rng());
-
->> BigInt([12346421629811869064, 10832332258257352915, 17999185152888039383, 7443919619818212425])
-
-let r = G1Projective::msm(&[a, b], &[s1, s2]).unwrap();
-
->> (1171139267616720494075625646925889629053973114062983274112141117287962730244572401315926224670976668703533933610938, 2597500562880127794764544429111412706443897715838599281188622858902365963355368167613499961260759309831461122771787, 157755297696137070468630334947167064094148264806415657673627072440504500291622319980244878217128135252257702585508)
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-```haskell
-let p1 = Point @BLS12_381_G1 241521825108085326152546143885075698096242717769365851673777146265962830024243722276743782280873588223519920495647 3560035591319159527750795167323375962990500740637199979279756662028071590138066280420930564248685402405154128130764
+<!-- gcc*
+```bash
+sudo apt install gcc
+``` -->
 
-let p2 = Point @BLS12_381_G1 241521825108085326152546143885075698096242717769365851673777146265962830024243722276743782280873588223519920495647 3560035591319159527750795167323375962990500740637199979279756662028071590138066280420930564248685402405154128130764
-
-let s1 = 46726240763639862128214388288720131204625575015731614850157206947646262134152
-
-let s2 = 46726240763639862128214388288720131204625575015731614850157206947646262134152
-
- withBorshVarBuffer (rustWrapperScalarMult p1 p2 s1 s2)
+Install cbindgen (require `gcc`):
+```bash
+cargo install --force cbindgen
 ```
+<!-- openssl*
+```bash
+sudo apt-get install libssl-dev
+```
+pkg-config*
+```bash
+sudo apt install pkg-config
+``` -->
+
+Install cargo-c (require `openssl` and `pkg-config`):
+```bash
+cargo install cargo-c
+```
+
+### Build Rust wrap
+
+You need to run the file `run.sh` from the project directory (or specify the path in the file).
+
+```bash
+source ./run.sh
+```
+
+### Build, Tests and Examples
+
+The package compiles with GHC 9.6.3 and Cabal 3.10.2.1.
+
+Running tests:
+```bash
+cabal run wrapper-test
+```
+
+Run benchmark:
+```bash
+cabal run msm
+```
+### Profiling and benchmarking
+
+Before you need install `ghc-prof-flamegraph`. Remember path to executable file
+```bash
+cabal install ghc-prof-flamegraph
+```
+
+Run benchmark with .prof generating
+```bash
+cabal run msm --enable-profiling -- +RTS -p
+```
+
+Run generating flamegraph. Make sure the path to `ghc-prof-flamegraph` is correct
+```bash
+~/.local/bin/ghc-prof-flamegraph msm.prof
+```
+Flamegraph will be in `msm.svg` file
