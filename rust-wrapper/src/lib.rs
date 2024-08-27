@@ -5,11 +5,11 @@ use num_bigint::BigUint;
 
 use haskell_ffi::error::Result;
 use haskell_ffi::to_haskell::marshall_to_haskell_var;
-use haskell_ffi::from_haskell::{marshall_from_haskell_var};
+use haskell_ffi::from_haskell::marshall_from_haskell_var;
 use haskell_ffi::{FromHaskell, ToHaskell};
 
 use ark_ff::PrimeField;
-use ark_ec::{VariableBaseMSM};
+use ark_ec::VariableBaseMSM;
 use ark_test_curves::bls12_381::{G1Projective as G, G1Affine as GAffine, Fr as ScalarField};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 

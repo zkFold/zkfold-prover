@@ -7,11 +7,11 @@ module Pack
     , unpackScalar
     ) where
 
+import           Data.Binary                             (Word8)
 import           Data.Bits                               (Bits (bit, clearBit, testBit))
 import qualified Data.ByteString                         as BS
 import           Data.Kind                               (Type)
 import           Data.Maybe                              (fromJust)
-import           Data.Word                               (Word8)
 import           GHC.TypeNats                            (KnownNat)
 import           Numeric.Natural                         (Natural)
 import           Prelude
@@ -37,10 +37,11 @@ packScalar
         (a :: Type)
         (b :: Natural)
     .   ( ScalarField a ~ Zp b
+        , KnownNat b
         )
-    =>ScalarField a
+    => ScalarField a
     -> BS.ByteString
-packScalar x = packNat 32 (fromZp x)
+packScalar = toByteString
 
 unpackScalar
     :: forall
@@ -49,9 +50,9 @@ unpackScalar
     .   ( ScalarField a ~ Zp b
         , KnownNat b
         )
-    =>BS.ByteString
+    => BS.ByteString
     -> ScalarField a
-unpackScalar bs = (toZp @b) $ toInteger $ unpackNat bs
+unpackScalar = fromJust . fromByteString
 
 packPoint
     :: forall
@@ -71,7 +72,7 @@ unpackPoint
     .   ( BaseField a ~ Zp b
         , KnownNat b
         )
-    =>BS.ByteString
+    => BS.ByteString
     -> Point a
 unpackPoint bs = if isInfinity then Inf @a else Point @a x y
   where

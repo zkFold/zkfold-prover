@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeOperators       #-}
 module ScalarSum (testScalarSum) where
 
+import           BN254.BN254                                 (BN254_G1)
 import           Data.Kind                                   (Type)
 import           GHC.TypeNats                                (KnownNat)
 import           Numeric.Natural                             (Natural)
@@ -12,7 +13,7 @@ import           Test.QuickCheck                             (Testable (property
 
 import           ZkFold.Base.Algebra.Basic.Class             (AdditiveSemigroup ((+)))
 import           ZkFold.Base.Algebra.Basic.Field             (Zp)
-import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1, BLS12_381_G2)
+import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1)
 import           ZkFold.Base.Algebra.EllipticCurve.Class     (EllipticCurve (ScalarField))
 
 specScalarSum
@@ -22,13 +23,14 @@ specScalarSum
     .   ( ScalarField a ~ Zp b
         , KnownNat b
         )
-    =>IO ()
-specScalarSum = hspec $ do
-    describe "Rust add specification" $ do
+    => String
+    -> IO ()
+specScalarSum name = hspec $ do
+    describe ("Rust add specification for " <> name) $ do
         it "should be equal to haskell" $ do
             property $ \(x :: ScalarField a) (y :: ScalarField a) -> rustScalarSum @a @b x y `shouldBe` (x + y)
 
 testScalarSum :: IO ()
 testScalarSum = do
-    specScalarSum @BLS12_381_G1
-    specScalarSum @BLS12_381_G2
+    specScalarSum @BLS12_381_G1 "BLS12_381_G1"
+    specScalarSum @BN254_G1 "BN254"

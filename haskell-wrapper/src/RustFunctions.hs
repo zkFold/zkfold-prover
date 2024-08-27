@@ -17,7 +17,7 @@ import           Pack                                        (packPoint, packSca
 import           Prelude                                     hiding (sum)
 
 import           ZkFold.Base.Algebra.Basic.Field             (Zp)
-import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_Base, BLS12_381_G1, BLS12_381_Scalar)
+import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1)
 import           ZkFold.Base.Algebra.EllipticCurve.Class     (EllipticCurve (BaseField, ScalarField), Point)
 import           ZkFold.Base.Algebra.Polynomials.Univariate  (fromPolyVec)
 import           ZkFold.Base.Protocol.NonInteractiveProof    (CoreFunction (..), msm)
@@ -45,6 +45,7 @@ rustMultiScalarMultiplication
         (c :: Natural)
     .   ( ScalarField a ~ Zp b
         , BaseField a ~ Zp c
+        , KnownNat b
         , KnownNat c
         )
     =>[Point a]
@@ -60,7 +61,7 @@ rustMultiScalarMultiplication points scalars = unpackPoint res'
 data RustCore
 
 instance CoreFunction BLS12_381_G1 RustCore where
-    msm gs f = uncurry (rustMultiScalarMultiplication @BLS12_381_G1 @BLS12_381_Scalar @BLS12_381_Base) (zipAndUnzip points scalars)
+    msm gs f = uncurry rustMultiScalarMultiplication (zipAndUnzip points scalars)
         where
             points = V.toList gs
 

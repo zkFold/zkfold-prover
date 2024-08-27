@@ -83,6 +83,7 @@ library
       Functions
     , Pack
     , RustFunctions
+    , BN254.BN254
   hs-source-dirs:
       haskell-wrapper/src
   build-depends:
@@ -91,6 +92,7 @@ library
     , foreign-rust
     , zkfold-base
     , vector
+    , binary
   build-tool-depends:
       c2hs:c2hs
   pkgconfig-depends:
