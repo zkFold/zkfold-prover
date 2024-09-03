@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module Main where
 
 import qualified Data.Vector                                 as V
@@ -12,8 +13,8 @@ import           ZkFold.Base.Algebra.Polynomials.Univariate  (PolyVec, toPolyVec
 import           ZkFold.Base.Data.Vector                     (Vector (..))
 import           ZkFold.Base.Protocol.NonInteractiveProof
 
-testMSM :: V.Vector (Point BLS12_381_G1) -> PolyVec (ScalarField BLS12_381_G1) size -> Bool
-testMSM points scalars = let !_ = msm @BLS12_381_G1 @RustCore points scalars in True
+testMSM :: forall core size . (CoreFunction BLS12_381_G1 core) => V.Vector (Point BLS12_381_G1) -> PolyVec (ScalarField BLS12_381_G1) size -> Bool
+testMSM points scalars = let !_ = msm @BLS12_381_G1 @core points scalars in True
 
 type Length = 1024
 
@@ -30,6 +31,8 @@ main = do
         [
             bgroup "MSM group"
             [
-                bench "Rust-arkmsm" $ nf (uncurry testMSM) (points, scalars)
+                bench "Haskell msm" $ nf (uncurry (testMSM @HaskellCore)) (points, scalars),
+                bcompare "Haskell msm" $
+                    bench "Rust-arkmsm" $ nf (uncurry (testMSM @RustCore)) (points, scalars)
             ]
         ]
