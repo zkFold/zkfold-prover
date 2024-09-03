@@ -9,18 +9,18 @@ ark-ec = { version= "0.4.0" }
 ark-std = { version = "0.4.0", default-features = false }
 ark-serialize = { version = "0.4.0", default-features = false }
 ark-bls12-381 = { version = "0.4.0" }
-ark-test-curves = { version = "0.4.0", features= ["bls12_381_curve", "bls12_381_scalar_field"] }
-borsh          = "0.10"
+ark-msm = { git = "https://github.com/TalDerei/arkmsm.git", rev="bc95ea3784983d8ced03a642d765bbfdd91faa9b"}
 der            = "0.7"
 rand           = "0.8"
-rcgen          = "0.10"
-serde          = { version = "1.0", features = ["derive"] }
-serde_json     = "1.0"
 num-bigint     = "0.4.6"
 num-traits     = "0.2.19"
+libc           = "0.2.158"
 
 haskell-ffi.git = "https://github.com/BeFunctional/haskell-rust-ffi.git"
 haskell-ffi.rev = "2bf292e2e56eac8e9fb0fb2e1450cf4a4bd01274"
+
+[profile.dev]
+opt-level = 3
 
 [features]
 capi = []

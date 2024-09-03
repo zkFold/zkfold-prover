@@ -1,25 +1,37 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE AllowAmbiguousTypes  #-}
+{-# LANGUAGE MagicHash            #-}
+{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+
+
 module RustFunctions
     ( rustScalarSum
     , rustMultiScalarMultiplication
+    , rustMultiScalarMultiplicationWithoutSerialization
     , RustCore
     ) where
 
-import           Data.Kind                                   (Type)
+import qualified Data.ByteString                             as BS
+import           Data.Maybe                                  (fromJust)
 import qualified Data.Vector                                 as V
+import           Foreign
 import           Foreign.Rust.Marshall.Variable              (withPureBorshVarBuffer)
-import           Functions                                   (rustWrapperMultiScalarMultiplication,
-                                                              rustWrapperScalarSum)
+import           Functions
+import           GHC.Base
+import           GHC.IO                                      (unsafePerformIO)
 import           GHC.Natural                                 (Natural)
+import           GHC.Num.Integer                             (integerToInt#)
+import           GHC.Num.Natural                             (naturalFromAddr, naturalToAddr)
+import           GHC.Ptr                                     (Ptr (..))
 import           GHC.TypeNats                                (KnownNat)
-import           Pack                                        (packPoint, packScalar, unpackPoint, unpackScalar)
 import           Prelude                                     hiding (sum)
 
-import           ZkFold.Base.Algebra.Basic.Field             (Zp)
-import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1)
-import           ZkFold.Base.Algebra.EllipticCurve.Class     (EllipticCurve (BaseField, ScalarField), Point)
+import           ZkFold.Base.Algebra.Basic.Field
+import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381
+import           ZkFold.Base.Algebra.EllipticCurve.Class
 import           ZkFold.Base.Algebra.Polynomials.Univariate  (fromPolyVec)
+import           ZkFold.Base.Data.ByteString
 import           ZkFold.Base.Protocol.NonInteractiveProof    (CoreFunction (..), msm)
 
 rustScalarSum
@@ -29,39 +41,149 @@ rustScalarSum
     .   ( ScalarField a ~ Zp b
         , KnownNat b
         )
-    =>ScalarField a
+    => ScalarField a
     -> ScalarField a
     -> ScalarField a
-rustScalarSum a b = unpackScalar @a @b sum'
+rustScalarSum a b = fromJust $ fromByteString @(ScalarField a) sum'
     where
-        a' = packScalar @a @b a
-        b' = packScalar @a @b b
+        a' = toByteString a
+        b' = toByteString b
         sum' = withPureBorshVarBuffer $ rustWrapperScalarSum a' b'
 
 rustMultiScalarMultiplication
     :: forall
         (a :: Type)
         (b :: Natural)
-        (c :: Natural)
     .   ( ScalarField a ~ Zp b
-        , BaseField a ~ Zp c
         , KnownNat b
-        , KnownNat c
+        , Binary (Point a)
         )
-    =>[Point a]
+    => [Point a]
     -> [ScalarField a]
     -> Point a
-rustMultiScalarMultiplication points scalars = unpackPoint res'
+rustMultiScalarMultiplication points scalars = fromJust $ fromByteString @(Point a) res'
     where
-        scalars' = mconcat $ packScalar @a @b <$> scalars
-        points'  = mconcat $ packPoint @a @c <$> points
+        scalars' = mconcat $ toByteString <$> scalars
+        points'  = mconcat $ toByteString <$> points
         res' = withPureBorshVarBuffer $ rustWrapperMultiScalarMultiplication points' scalars'
+
+
+rustMultiScalarMultiplicationWithoutSerialization
+    :: forall
+        (a :: Type)
+        (b :: Natural)
+    .   (ScalarField a ~ Zp b
+        , Binary (Point a)
+        , Storable (ScalarField a)
+        , Storable (Point a)
+        )
+    => [Point a]
+    -> [ScalarField a]
+    -> Point a
+rustMultiScalarMultiplicationWithoutSerialization points scalars = unsafePerformIO runMSM
+    where
+
+        pointSize = sizeOf (undefined :: Point a)
+        scalarSize = sizeOf (undefined :: ScalarField a)
+
+        pointsByteLength = pointSize * length points
+        scalarsByteLength = scalarSize * length scalars
+
+
+        runMSM :: IO (Point a)
+        runMSM = do
+            ptrScalars <- callocBytes @(ScalarField a) scalarsByteLength
+            ptrPoints <- callocBytes @(Point a) pointsByteLength
+
+            pokeArray ptrScalars scalars
+            pokeArray ptrPoints points
+
+            out <- mallocBytes pointSize
+
+            let !_ = rustWrapperMultiScalarMultiplicationWithoutSerialization
+                        (castPtr ptrPoints) pointsByteLength
+                        (castPtr ptrScalars) scalarsByteLength
+                        pointSize out
+
+            res <- BS.packCStringLen (out, pointSize)
+
+            free ptrScalars
+            free ptrPoints
+            free out
+
+            return $ fromJust $ fromByteString @(Point a) res
 
 
 data RustCore
 
+peekZpLE :: KnownNat a => Int -> Ptr (Zp a) -> IO (Zp a)
+peekZpLE size ptr = do
+    let !(Ptr addr) = ptr
+    toZp . toInteger <$> naturalFromAddr (int2Word# (integerToInt# $ toInteger size)) addr 0#
+
+pokeZpLE :: Ptr (Zp a) -> Zp a -> IO ()
+pokeZpLE ptr p = do
+    let !(Ptr addr) = ptr
+    !_ <- naturalToAddr (fromZp p) addr 0#
+    return ()
+
+
+instance Storable Fr where
+  sizeOf :: Fr -> Int
+  sizeOf _ = 32
+
+  alignment :: Fr -> Int
+  alignment _ = 8
+
+  peek :: Ptr Fr -> IO Fr
+  peek = peekZpLE (sizeOf @Fr undefined)
+
+  poke :: Ptr Fr -> Fr -> IO ()
+  poke = pokeZpLE
+
+instance Storable Fq where
+
+  sizeOf :: Fq -> Int
+  sizeOf    _ = 48
+
+  alignment :: Fq -> Int
+  alignment _ = 8
+
+  peek :: Ptr Fq -> IO Fq
+  peek = peekZpLE (sizeOf @Fq undefined)
+
+  poke :: Ptr Fq -> Fq -> IO ()
+  poke = pokeZpLE
+
+infByteStringRepr :: [Word8]
+infByteStringRepr = replicate 47 0 <> (bit 6 : replicate 48 0)
+
+instance Storable (Point BLS12_381_G1) where
+
+  sizeOf :: Point BLS12_381_G1 -> Int
+  sizeOf _ = 96
+
+  alignment :: Point BLS12_381_G1 -> Int
+  alignment _ = alignment @Fq undefined
+
+  peek :: Ptr (Point BLS12_381_G1) -> IO (Point BLS12_381_G1)
+  peek ptr = do
+    a <- BS.packCStringLen (castPtr ptr, sizeOf @(Point BLS12_381_G1) undefined)
+    if BS.pack infByteStringRepr == a
+    then return Inf
+    else do
+        x <- peek @Fq (castPtr ptr)
+        y <- peek @Fq (ptr `plusPtr` sizeOf @Fq undefined)
+        return $ Point x y
+
+  poke :: Ptr (Point BLS12_381_G1) -> Point BLS12_381_G1 -> IO ()
+  poke ptr Inf = pokeArray (castPtr ptr) infByteStringRepr
+  poke ptr (Point x y) = do
+    poke (castPtr ptr) x
+    poke (castPtr ptr `plusPtr` sizeOf @Fq undefined) y
+
 instance CoreFunction BLS12_381_G1 RustCore where
-    msm gs f = uncurry rustMultiScalarMultiplication (zipAndUnzip points scalars)
+    msm gs f = uncurry rustMultiScalarMultiplicationWithoutSerialization (zipAndUnzip points scalars)
         where
             points = V.toList gs
 

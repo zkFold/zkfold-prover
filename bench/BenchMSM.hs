@@ -1,31 +1,35 @@
 module Main where
 
-import qualified Data.ByteString                             as BS
-import           Prelude                                     hiding (length, sum, (-))
+import qualified Data.Vector                                 as V
+import           Prelude                                     hiding (Num (..), length, sum, take, (-))
 import           RustFunctions                               (RustCore)
 import           Test.QuickCheck                             (Arbitrary (arbitrary), generate)
 import           Test.Tasty.Bench
 
-import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1, BLS12_381_G2)
-import           ZkFold.Base.Protocol.ARK.Plonk              (Plonk)
-import           ZkFold.Base.Protocol.NonInteractiveProof    (HaskellCore, NonInteractiveProof (..),
-                                                              NonInteractiveProofTestData (..))
-type PlonkSizeBS = 32
-type PlonkBS n = Plonk PlonkSizeBS n BLS12_381_G1 BLS12_381_G2 BS.ByteString
+import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1)
+import           ZkFold.Base.Algebra.EllipticCurve.Class     (EllipticCurve (ScalarField), Point)
+import           ZkFold.Base.Algebra.Polynomials.Univariate  (PolyVec, toPolyVec)
+import           ZkFold.Base.Data.Vector                     (Vector (..))
+import           ZkFold.Base.Protocol.NonInteractiveProof
+
+testMSM :: V.Vector (Point BLS12_381_G1) -> PolyVec (ScalarField BLS12_381_G1) size -> Bool
+testMSM points scalars = let !_ = msm @BLS12_381_G1 @RustCore points scalars in True
+
+type Length = 1024
 
 main :: IO ()
 main = do
-    (TestData a w) <- generate arbitrary :: IO (NonInteractiveProofTestData (PlonkBS 2) HaskellCore)
+    (Vector p) <- generate arbitrary :: IO (Vector Length (Point BLS12_381_G1))
+    (Vector s) <- generate arbitrary :: IO (Vector Length (ScalarField BLS12_381_G1))
 
-    let spHaskell = setupProve @(PlonkBS 2) @HaskellCore a
-        spRust    = setupProve @(PlonkBS 2) @RustCore    a
+    let
+        points = V.fromList p
+        scalars = toPolyVec @(ScalarField BLS12_381_G1) @Length $ V.fromList s
 
     defaultMain
         [
             bgroup "MSM group"
-
-            [ bench "Haskell core" $ nf (show . uncurry (prove @(PlonkBS 2) @HaskellCore)) (spHaskell, w)
-            , bcompare "Haskell core" $
-                bench "Rust core" $ nf (show . uncurry (prove @(PlonkBS 2) @RustCore)) (spRust, w)
+            [
+                bench "Rust-arkmsm" $ nf (uncurry testMSM) (points, scalars)
             ]
         ]
