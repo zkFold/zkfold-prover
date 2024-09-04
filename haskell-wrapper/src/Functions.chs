@@ -34,3 +34,17 @@ import Foreign.Rust.Marshall.Variable
   } 
   -> `()'
 #}
+
+
+{# fun pure unsafe rust_wrapper_mul_fft as rustWrapperMulFFT
+  { `CString'
+  , `Int' 
+
+  , `CString'
+  , `Int' 
+  
+  , `Int' 
+  , `CString'
+  } 
+  -> `()'
+#}

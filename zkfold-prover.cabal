@@ -107,6 +107,7 @@ test-suite wrapper-test
   other-modules: 
     ScalarSum
     MultiScalarMultiplication  
+    FFT
   build-depends:
     , base >= 4.16
     , zkfold-base
@@ -148,3 +149,22 @@ benchmark prove
       zkfold-base,
       bytestring,
       haskell-wrapper
+
+benchmark poly-mul
+    import:           options
+    main-is:          BenchPolyMul.hs
+    hs-source-dirs:   bench
+    type:             exitcode-stdio-1.0
+    ghc-options:      
+      -rtsopts
+      -fprof-auto
+    build-depends: 
+      base, 
+      tasty-bench,
+      QuickCheck,
+      vector,
+      zkfold-base,
+      bytestring,
+      haskell-wrapper,
+      random,
+      deepseq
