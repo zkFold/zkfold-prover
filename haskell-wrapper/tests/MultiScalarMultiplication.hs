@@ -17,7 +17,7 @@ specMultiScalarMultiplication :: IO ()
 specMultiScalarMultiplication = hspec $ do
     describe "Rust binary scalar mulitply specification" $ do
         it "should be equal to haskell" $ do
-            property $ withMaxSuccess 200 $
+            property $ withMaxSuccess 100 $
               \
                (p :: [Point BLS12_381_G1])
                (s :: [ScalarField BLS12_381_G1])

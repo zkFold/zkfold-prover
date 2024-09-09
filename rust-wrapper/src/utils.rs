@@ -16,46 +16,42 @@ pub struct Buffer<T>(pub Vec<T>);
 pub fn deserialize_vector<T>(
     vector: &mut Vec<u8>,
     object_size: usize,
-    deserialize: fn(&mut [u8]) -> T,
+    deserialize: fn(&mut [u8]) -> Result<T>,
 ) -> Buffer<T> {
     Buffer(
         vector
             .chunks_exact_mut(object_size)
-            .map(|chunk| deserialize(chunk))
+            .flat_map(deserialize)
             .collect(),
     )
 }
 
-pub fn deserialize_vector_scalar_field(
+pub unsafe fn deserialize_vector_scalar_field(
     scalars_var: *const libc::c_char,
     scalars_len: usize,
 ) -> Vec<ScalarField> {
     let mut vec: Vec<u8> = vec![0; scalars_len];
-    unsafe {
-        std::ptr::copy(scalars_var as *const u8, vec.as_mut_ptr(), scalars_len);
-    }
-    let scalars: Vec<_> = deserialize_vector(&mut vec, 32, |x| -> ScalarField {
-        PrimeField::from_le_bytes_mod_order(x)
+    std::ptr::copy(scalars_var as *const u8, vec.as_mut_ptr(), scalars_len);
+
+    deserialize_vector(&mut vec, std::mem::size_of::<ScalarField>(), |x| {
+        Ok(PrimeField::from_le_bytes_mod_order(x))
     })
-    .0;
-    scalars
+    .0
 }
 
-pub fn deserialize_vector_points(
+pub unsafe fn deserialize_vector_points(
     points_var: *const libc::c_char,
     points_len: usize,
 ) -> Vec<GAffine> {
     let mut vec: Vec<u8> = vec![0; points_len];
-    unsafe {
-        std::ptr::copy(points_var as *const u8, vec.as_mut_ptr(), points_len);
-    }
-    let points: Vec<GAffine> = deserialize_vector(&mut vec, 96, |bytes| -> GAffine {
-        bytes[0..48].reverse();
-        bytes[48..96].reverse();
-        GAffine::deserialize_uncompressed_unchecked(&*bytes).unwrap()
+    std::ptr::copy(points_var as *const u8, vec.as_mut_ptr(), points_len);
+    deserialize_vector(&mut vec, GAffine::identity().uncompressed_size(), |bytes| {
+        let point_size = bytes.len();
+        bytes[0..(point_size >> 1)].reverse();
+        bytes[(point_size >> 1)..point_size].reverse();
+        Ok(GAffine::deserialize_uncompressed_unchecked(&*bytes)?)
     })
-    .0;
-    points
+    .0
 }
 
 impl FromHaskell<RW> for ScalarField {
@@ -77,7 +73,7 @@ impl ToHaskell<RW> for ScalarField {
 impl FromHaskell<RW> for GAffine {
     fn from_haskell(buf: &mut &[u8], tag: PhantomData<RW>) -> Result<Self> {
         let _a = <Vec<u8>>::from_haskell(buf, tag)?;
-        let a = GAffine::deserialize_uncompressed(&*_a).unwrap();
+        let a = GAffine::deserialize_uncompressed(&*_a)?;
         Ok(a)
     }
 }
@@ -85,7 +81,7 @@ impl FromHaskell<RW> for GAffine {
 impl ToHaskell<RW> for GAffine {
     fn to_haskell<W: Write>(&self, writer: &mut W, tag: PhantomData<RW>) -> Result<()> {
         let mut res = Vec::new();
-        self.serialize_uncompressed(&mut res).unwrap();
+        self.serialize_uncompressed(&mut res)?;
         res.to_haskell(writer, tag)
     }
 }
@@ -93,8 +89,8 @@ impl ToHaskell<RW> for GAffine {
 impl FromHaskell<RW> for Buffer<ScalarField> {
     fn from_haskell(buf: &mut &[u8], tag: PhantomData<RW>) -> Result<Self> {
         let mut buffer = <Vec<u8>>::from_haskell(buf, tag)?;
-        let res = deserialize_vector(&mut buffer, 32, |bytes| -> ScalarField {
-            PrimeField::from_le_bytes_mod_order(bytes)
+        let res = deserialize_vector(&mut buffer, std::mem::size_of::<ScalarField>(), |bytes| {
+            Ok(PrimeField::from_le_bytes_mod_order(bytes))
         });
         Ok(res)
     }
@@ -103,9 +99,11 @@ impl FromHaskell<RW> for Buffer<ScalarField> {
 impl FromHaskell<RW> for Buffer<GAffine> {
     fn from_haskell(buf: &mut &[u8], tag: PhantomData<RW>) -> Result<Self> {
         let mut buffer = <Vec<u8>>::from_haskell(buf, tag)?;
-        let res = deserialize_vector(&mut buffer, 96, |bytes| -> GAffine {
-            GAffine::deserialize_uncompressed_unchecked(&*bytes).unwrap()
-        });
+        let res = deserialize_vector(
+            &mut buffer,
+            GAffine::identity().uncompressed_size(),
+            |bytes| Ok(GAffine::deserialize_uncompressed_unchecked(&*bytes)?),
+        );
         Ok(res)
     }
 }

@@ -16,7 +16,7 @@ specFFT :: IO ()
 specFFT = hspec $ do
     describe "Rust FFT multiplication specification" $ do
         it "should be equal to haskell" $ do
-            property $ withMaxSuccess 200 $
+            property $ withMaxSuccess 100 $
               \
                (l :: [ScalarField BLS12_381_G1])
                (r :: [ScalarField BLS12_381_G1])

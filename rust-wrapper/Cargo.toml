@@ -16,12 +16,22 @@ num-bigint     = "0.4.6"
 num-traits     = "0.2.19"
 libc           = "0.2.158"
 ark-poly       = "0.4.2"
+ark-test-curves = "0.4.2"
+criterion = { version = "0.5", features = ["html_reports"] }
 
 haskell-ffi.git = "https://github.com/BeFunctional/haskell-rust-ffi.git"
 haskell-ffi.rev = "2bf292e2e56eac8e9fb0fb2e1450cf4a4bd01274"
 
-[profile.dev]
-opt-level = 3
+[profile.bench]
+opt-level = 2
+
+[[bench]]
+name = "msm_bench"
+harness = false
+
+[[bench]]
+name = "fft_bench"
+harness = false
 
 [features]
 capi = []

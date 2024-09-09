@@ -10,7 +10,7 @@ import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1, BLS1
 import           ZkFold.Base.Protocol.ARK.Plonk              (Plonk)
 import           ZkFold.Base.Protocol.NonInteractiveProof
 
-type PlonkSizeBS = 32
+type PlonkSizeBS = 128
 type PlonkBS n = Plonk PlonkSizeBS n BLS12_381_G1 BLS12_381_G2 BS.ByteString
 
 main :: IO ()

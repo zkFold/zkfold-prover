@@ -199,7 +199,7 @@ instance CoreFunction BLS12_381_G1 RustCore where
 
 
 rustMulFft :: forall f . Storable f => V.Vector f -> V.Vector f -> V.Vector f
-rustMulFft l r = unsafePerformIO runFFT
+rustMulFft l r = if lByteLength * rByteLength == 0 then V.empty else unsafePerformIO runFFT
     where
         scalarSize = sizeOf (undefined :: f)
 
@@ -214,11 +214,12 @@ rustMulFft l r = unsafePerformIO runFFT
             pokeArray ptrL (V.toList l)
             pokeArray ptrR (V.toList r)
 
-            out <- callocBytes (lByteLength + rByteLength)
+            let outLen = lByteLength + rByteLength - scalarSize
+            out <- callocBytes outLen
 
             let !_ = rustWrapperMulFFT
                         (castPtr ptrL) lByteLength
                         (castPtr ptrR) rByteLength
-                        (lByteLength + rByteLength) out
+                        outLen out
 
-            V.fromList <$> peekArray @f (V.length l + V.length r) (castPtr out)
+            V.fromList <$> peekArray @f (V.length l + V.length r - 1) (castPtr out)

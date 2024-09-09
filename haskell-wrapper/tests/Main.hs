@@ -8,5 +8,5 @@ import           ScalarSum                 (testScalarSum)
 main :: IO ()
 main = do
     testScalarSum
-    testMultiScalarMultiplication
     testFFT
+    testMultiScalarMultiplication
