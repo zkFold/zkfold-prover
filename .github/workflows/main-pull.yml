@@ -51,6 +51,7 @@ jobs:
         echo $LD_LIBRARY_PATH 
         echo $PKG_CONFIG_PATH
         echo $(pkg-config --version)
+        echo $(pkg-config --list-all | grep rust)
 
     - name: Generate cache key
       # Creates plan.json file
