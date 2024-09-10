@@ -48,7 +48,9 @@ jobs:
     - name: Build rust wrapper
       run: |
         source ./run.sh
-
+        echo $LD_LIBRARY_PATH 
+        echo $PKG_CONFIG_PATH
+        echo $(pkg-config --version)
     - name: Generate cache key
       # Creates plan.json file
       run: |
