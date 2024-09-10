@@ -52,6 +52,7 @@ jobs:
         echo $PKG_CONFIG_PATH
         echo $(pkg-config --version)
         echo $(pkg-config --list-all | grep rust)
+        ls -la ./rust-wrapper/target/
 
     - name: Generate cache key
       # Creates plan.json file
