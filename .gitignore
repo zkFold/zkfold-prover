@@ -24,4 +24,5 @@ cabal.project.local~
 rust-wrapper/target/
 rust-wrapper/Cargo.lock
 rust-wrapper/haskell-wrapper/cbits/rust-wrapper.h
+*.data
 *.svg
