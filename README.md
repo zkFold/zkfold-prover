@@ -84,7 +84,7 @@ To run benchmark install [cargo-criterion](https://github.com/bheisler/cargo-cri
 ```bash
 cargo install cargo-criterion
 ```
-And run
+And run in `rust-wrapper`
 ```bash
 cargo criterion --bench msm_bench
 ```
@@ -94,7 +94,7 @@ For generate flamegraph install [flamegraph](https://github.com/flamegraph-rs/fl
 cargo install flamegraph
 ```
 
-And generate flamegraph from bench:
+And generate flamegraph from bench (in `rust-wrapper`):
 ```bash
 cargo flamegraph --bench msm_bench
 ```

@@ -1,3 +1,5 @@
+use std::slice;
+
 use ark_bls12_381::{Fr as ScalarField, G1Affine as GAffine, G1Projective as G};
 use ark_ec::VariableBaseMSM as BaselineVariableBaseMSM;
 use ark_ff::PrimeField;
@@ -39,26 +41,16 @@ const fn get_opt_window_size(k: u32) -> u32 {
     }
 }
 
-///
-/// # Safety
-/// The caller must ensure that valid pointers and sizes are passed. 
-/// To find out how data should be represented in memory, you can look at msm_bench.rs
-/// .
-#[no_mangle]
-pub unsafe extern "C" fn rust_wrapper_multi_scalar_multiplication_without_serialization(
-    points_var: *const libc::c_char,
-    points_len: usize,
-    scalars_var: *const libc::c_char,
-    scalars_len: usize,
-    out_len: usize,
-    out: *mut libc::c_char,
-) {
-    let scalars: Vec<_> = deserialize_vector_scalar_field(scalars_var, scalars_len)
+pub fn multi_scalar_multiplication_without_serialization(
+    scalar_buffer: &[u8],
+    point_buffer: &[u8],
+) -> Vec<u8> {
+    let scalars: Vec<_> = deserialize_vector_scalar_field(scalar_buffer)
         .iter()
         .map(|i| i.into_bigint())
         .collect();
 
-    let points = deserialize_vector_points(points_var, points_len);
+    let points = deserialize_vector_points(point_buffer);
 
     let opt_window_size = get_opt_window_size(log2(points.len()));
     let r: GAffine = VariableBaseMSM::multi_scalar_mul_custom(
@@ -73,5 +65,26 @@ pub unsafe extern "C" fn rust_wrapper_multi_scalar_multiplication_without_serial
 
     let mut res = Vec::new();
     r.serialize_uncompressed(&mut res).unwrap();
+    res
+}
+
+///
+/// # Safety
+/// The caller must ensure that valid pointers and sizes are passed.
+/// .
+#[no_mangle]
+pub unsafe extern "C" fn rust_wrapper_multi_scalar_multiplication_without_serialization(
+    points_var: *const libc::c_char,
+    points_len: usize,
+    scalars_var: *const libc::c_char,
+    scalars_len: usize,
+    out_len: usize,
+    out: *mut libc::c_char,
+) {
+    let scalar_buffer = slice::from_raw_parts(scalars_var as *const u8, scalars_len);
+    let point_buffer = slice::from_raw_parts(points_var as *const u8, points_len);
+
+    let res = multi_scalar_multiplication_without_serialization(scalar_buffer, point_buffer);
+    
     std::ptr::copy(res.as_ptr(), out as *mut u8, out_len);
 }

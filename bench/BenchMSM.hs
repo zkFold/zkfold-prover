@@ -16,7 +16,7 @@ import           ZkFold.Base.Protocol.NonInteractiveProof
 testMSM :: forall core size . (CoreFunction BLS12_381_G1 core) => V.Vector (Point BLS12_381_G1) -> PolyVec (ScalarField BLS12_381_G1) size -> Bool
 testMSM points scalars = let !_ = msm @BLS12_381_G1 @core points scalars in True
 
-type Length = 1024
+type Length = 4096
 
 main :: IO ()
 main = do

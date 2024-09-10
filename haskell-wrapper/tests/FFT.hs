@@ -5,7 +5,6 @@ import           Prelude                                     hiding (Num (..), s
 import           RustFunctions                               (rustMulFft)
 import           Test.Hspec                                  (describe, hspec, it, shouldBe)
 import           Test.QuickCheck                             (Testable (property))
-import           Test.QuickCheck.Property                    (withMaxSuccess)
 
 import           ZkFold.Base.Algebra.Basic.Class             (MultiplicativeSemigroup ((*)))
 import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1)
@@ -16,7 +15,7 @@ specFFT :: IO ()
 specFFT = hspec $ do
     describe "Rust FFT multiplication specification" $ do
         it "should be equal to haskell" $ do
-            property $ withMaxSuccess 100 $
+            property $
               \
                (l :: [ScalarField BLS12_381_G1])
                (r :: [ScalarField BLS12_381_G1])
