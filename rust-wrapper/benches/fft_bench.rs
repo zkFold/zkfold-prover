@@ -37,12 +37,12 @@ fn criterion_benchmark(c: &mut Criterion) {
                 .collect();
 
             std::ptr::copy(
-                l_bytes_vec.as_ptr() as *const u8,
+                l_bytes_vec.as_ptr(),
                 l_ptr as *mut u8,
                 l_bytes_len,
             );
             std::ptr::copy(
-                r_bytes_vec.as_ptr() as *const u8,
+                r_bytes_vec.as_ptr(),
                 r_ptr as *mut u8,
                 r_bytes_len,
             );

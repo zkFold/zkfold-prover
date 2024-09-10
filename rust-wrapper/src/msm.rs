@@ -26,8 +26,8 @@ pub extern "C" fn rust_wrapper_multi_scalar_multiplication(
 
     marshall_to_haskell_var(&r, out, out_len, RW);
 }
-
-// Function from arkmsm crate, derived from benchmark results. May not be optimal for all configurations
+// This is inner function from arkmsm crate, derived from benchmark results. May not be optimal for all configurations
+// https://github.com/snarkify/arkmsm/blob/main/src/msm.rs
 const fn get_opt_window_size(k: u32) -> u32 {
     match k {
         0..=9 => 8,
@@ -39,6 +39,11 @@ const fn get_opt_window_size(k: u32) -> u32 {
     }
 }
 
+///
+/// # Safety
+/// The caller must ensure that valid pointers and sizes are passed. 
+/// To find out how data should be represented in memory, you can look at msm_bench.rs
+/// .
 #[no_mangle]
 pub unsafe extern "C" fn rust_wrapper_multi_scalar_multiplication_without_serialization(
     points_var: *const libc::c_char,
@@ -68,5 +73,5 @@ pub unsafe extern "C" fn rust_wrapper_multi_scalar_multiplication_without_serial
 
     let mut res = Vec::new();
     r.serialize_uncompressed(&mut res).unwrap();
-    std::ptr::copy(res.as_ptr() as *const u8, out as *mut u8, out_len);
+    std::ptr::copy(res.as_ptr(), out as *mut u8, out_len);
 }

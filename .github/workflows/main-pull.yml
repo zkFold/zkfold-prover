@@ -8,15 +8,18 @@ permissions:
   contents: write
 
 jobs:
-  on-main-pull-request:
-
+  install:
+    name: Rust (${{matrix.os}})
+    runs-on: ${{matrix.os}}
     strategy:
+      fail-fast: false
+      max-parallel: 5
       matrix:
         os: [ubuntu-latest]
         cabal: [3.10.2.1]
         ghc: [9.6.3]
-
-    runs-on: ${{ matrix.os }}
+        rust:
+          - null
 
     steps:
     - name: Checkout code
@@ -28,12 +31,24 @@ jobs:
       with:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: ${{ matrix.cabal }}
-        cabal-update: true
+        cabal-update: true      
+    
+    - name: Set up cbindgen
+      run: |
+        cargo install --force cbindgen
 
+    - name: Set up cargo-c
+      run: |
+        cargo install cargo-c
+      
     - name: Configure Cabal
       run: |
         cabal configure --enable-tests --enable-benchmarks --enable-documentation
     
+    - name: Build rust wrapper
+      run: |
+        source ./run.sh
+
     - name: Generate cache key
       # Creates plan.json file
       run: |

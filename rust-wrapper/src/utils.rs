@@ -14,7 +14,7 @@ pub const RW: PhantomData<RW> = PhantomData;
 pub struct Buffer<T>(pub Vec<T>);
 
 pub fn deserialize_vector<T>(
-    vector: &mut Vec<u8>,
+    vector: &mut [u8],
     object_size: usize,
     deserialize: fn(&mut [u8]) -> Result<T>,
 ) -> Buffer<T> {

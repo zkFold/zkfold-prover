@@ -8,6 +8,11 @@ use std::ops::Mul;
 
 use crate::utils::deserialize_vector_scalar_field;
 
+///
+/// # Safety
+/// The caller must ensure that valid pointers and sizes are passed. 
+/// To find out how data should be represented in memory, you can look at fft_bench.rs
+/// .
 #[no_mangle]
 pub unsafe extern "C" fn rust_wrapper_mul_fft(
     l_var: *const libc::c_char,
@@ -31,5 +36,5 @@ pub unsafe extern "C" fn rust_wrapper_mul_fft(
         })
         .collect();
 
-    std::ptr::copy(res.as_ptr() as *const u8, out as *mut u8, out_len);
+    std::ptr::copy(res.as_ptr(), out as *mut u8, out_len);
 }
