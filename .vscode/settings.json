@@ -1,0 +1,4 @@
+{
+    "haskell.formattingProvider": "stylish-haskell",
+    "rust-analyzer.check.command": "clippy"
+}

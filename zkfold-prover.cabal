@@ -81,7 +81,6 @@ library
   import: options
   exposed-modules:
       Functions
-    , Pack
     , RustFunctions
     , BN254.BN254
   hs-source-dirs:
@@ -93,6 +92,8 @@ library
     , zkfold-base
     , vector
     , binary
+  ghc-options:
+    -O2
   build-tool-depends:
       c2hs:c2hs
   pkgconfig-depends:
@@ -106,6 +107,7 @@ test-suite wrapper-test
   other-modules: 
     ScalarSum
     MultiScalarMultiplication  
+    FFT
   build-depends:
     , base >= 4.16
     , zkfold-base
@@ -121,7 +123,6 @@ benchmark msm
     type:             exitcode-stdio-1.0
     ghc-options:      
       -rtsopts
-      -O3
       -fprof-auto
     build-depends: 
       base, 
@@ -131,3 +132,39 @@ benchmark msm
       zkfold-base,
       bytestring,
       haskell-wrapper
+
+benchmark prove
+    import:           options
+    main-is:          BenchProve.hs
+    hs-source-dirs:   bench
+    type:             exitcode-stdio-1.0
+    ghc-options:      
+      -rtsopts
+      -fprof-auto
+    build-depends: 
+      base, 
+      tasty-bench,
+      QuickCheck,
+      vector,
+      zkfold-base,
+      bytestring,
+      haskell-wrapper
+
+benchmark poly-mul
+    import:           options
+    main-is:          BenchPolyMul.hs
+    hs-source-dirs:   bench
+    type:             exitcode-stdio-1.0
+    ghc-options:      
+      -rtsopts
+      -fprof-auto
+    build-depends: 
+      base, 
+      tasty-bench,
+      QuickCheck,
+      vector,
+      zkfold-base,
+      bytestring,
+      haskell-wrapper,
+      random,
+      deepseq

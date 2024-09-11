@@ -4,23 +4,38 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# Crate arkmsm uses arkworks 0.3.0, it is not compatible with version 0.4.0. 
+# We are using an unofficial fork of the repository, which updates the version to 0.4.0. 
+# We need to check the status of arkmsm to move to a stable version.
+ark-msm = { git = "https://github.com/TalDerei/arkmsm.git", rev="bc95ea3784983d8ced03a642d765bbfdd91faa9b"}
+
 ark-ff = { version= "0.4.0", default-features = false }
 ark-ec = { version= "0.4.0" }
 ark-std = { version = "0.4.0", default-features = false }
 ark-serialize = { version = "0.4.0", default-features = false }
 ark-bls12-381 = { version = "0.4.0" }
-ark-test-curves = { version = "0.4.0", features= ["bls12_381_curve", "bls12_381_scalar_field"] }
-borsh          = "0.10"
 der            = "0.7"
 rand           = "0.8"
-rcgen          = "0.10"
-serde          = { version = "1.0", features = ["derive"] }
-serde_json     = "1.0"
 num-bigint     = "0.4.6"
 num-traits     = "0.2.19"
+libc           = "0.2.158"
+ark-poly       = "0.4.2"
+ark-test-curves = "0.4.2"
+criterion = { version = "0.5", features = ["html_reports"] }
 
 haskell-ffi.git = "https://github.com/BeFunctional/haskell-rust-ffi.git"
 haskell-ffi.rev = "2bf292e2e56eac8e9fb0fb2e1450cf4a4bd01274"
+
+[profile.bench]
+opt-level = 2
+
+[[bench]]
+name = "msm_bench"
+harness = false
+
+[[bench]]
+name = "fft_bench"
+harness = false
 
 [features]
 capi = []

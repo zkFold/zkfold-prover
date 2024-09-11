@@ -59,7 +59,7 @@ Run benchmark:
 ```bash
 cabal run msm
 ```
-### Profiling and benchmarking
+### Haskell profiling and benchmarking
 
 Before you need install `ghc-prof-flamegraph`. Remember path to executable file
 ```bash
@@ -76,3 +76,26 @@ Run generating flamegraph. Make sure the path to `ghc-prof-flamegraph` is correc
 ~/.local/bin/ghc-prof-flamegraph msm.prof
 ```
 Flamegraph will be in `msm.svg` file
+
+
+### Rust profiling and benchmarking
+
+To run benchmark install [cargo-criterion](https://github.com/bheisler/cargo-criterion)
+```bash
+cargo install cargo-criterion
+```
+And run in `rust-wrapper`
+```bash
+cargo criterion --bench msm_bench
+```
+
+For generate flamegraph install [flamegraph](https://github.com/flamegraph-rs/flamegraph) (require `perf`)
+```bash
+cargo install flamegraph
+```
+
+And generate flamegraph from bench (in `rust-wrapper`):
+```bash
+cargo flamegraph --bench msm_bench
+```
+
