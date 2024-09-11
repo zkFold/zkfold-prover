@@ -4,8 +4,13 @@ use utils::RW;
 
 use crate::utils;
 
+///
+/// # Safety
+/// The caller must make sure that correctly serialized scalars are passed.
+/// Correct serialization/deserialization is described in ToHaskell/FromHaskell trait.
+/// .
 #[no_mangle]
-pub extern "C" fn rust_wrapper_scalar_sum(
+pub unsafe extern "C" fn rust_wrapper_scalar_sum(
     a_var: *const u8,
     a_len: usize,
     b_var: *const u8,

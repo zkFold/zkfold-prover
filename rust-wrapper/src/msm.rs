@@ -11,8 +11,13 @@ use utils::{Buffer, RW};
 
 use crate::utils::{self, deserialize_vector_points, deserialize_vector_scalar_field};
 
+///
+/// # Safety
+/// The caller must make sure that correctly serialized scalars are passed.
+/// Correct serialization/deserialization is described in ToHaskell/FromHaskell trait.
+/// .
 #[no_mangle]
-pub extern "C" fn rust_wrapper_multi_scalar_multiplication(
+pub unsafe extern "C" fn rust_wrapper_multi_scalar_multiplication(
     points_var: *const u8,
     points_len: usize,
     scalars_var: *const u8,
