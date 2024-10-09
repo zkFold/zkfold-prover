@@ -59,7 +59,7 @@ jobs:
 
     - name: Install stylish-haskell
       run: |
-        cabal install stylish-haskell
+        cabal install stylish-haskell-0.14.5.0
 
     - name: Lint Haskell
       run: |
