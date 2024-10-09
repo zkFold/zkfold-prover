@@ -65,6 +65,14 @@ jobs:
       run: |
         cabal install stylish-haskell-0.14.5.0
 
+    - name: Cargo clippy
+      run: |
+        cargo clippy --manifest-path rust-wrapper/Cargo.toml -- -D warnings
+
+    - name: Rust format
+      run: |
+        cargo fmt --manifest-path rust-wrapper/Cargo.toml
+
     - name: Lint Haskell
       run: |
         find . -name '*.hs' -exec sh -c 'for file do stylish-haskell --inplace "$file"; done' sh {} +
