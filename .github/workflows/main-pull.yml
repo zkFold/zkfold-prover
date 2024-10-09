@@ -33,6 +33,10 @@ jobs:
         cabal-version: ${{ matrix.cabal }}
         cabal-update: true
 
+    - name: Set up rustup nightly
+      run: |
+        rustup toolchain install nightly
+
     - name: Set up cargo-c
       run: |
         cargo install cargo-c
