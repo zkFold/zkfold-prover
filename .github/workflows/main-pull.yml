@@ -7,6 +7,9 @@ on:
 permissions:
   contents: write
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   on-main-pull-request:
 
@@ -29,9 +32,6 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: ${{ matrix.cabal }}
         cabal-update: true
-
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
 
     - name: Set up cargo-c
       run: |
