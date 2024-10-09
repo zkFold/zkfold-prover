@@ -1,38 +1,13 @@
 use std::slice;
 
-use ark_bls12_381::{Fr as ScalarField, G1Affine as GAffine, G1Projective as G};
-use ark_ec::VariableBaseMSM as BaselineVariableBaseMSM;
+use ark_bls12_381::G1Affine as GAffine;
 use ark_ff::PrimeField;
 use ark_msm::msm::VariableBaseMSM;
 use ark_serialize::CanonicalSerialize;
 use ark_std::log2;
-use haskell_ffi::{from_haskell::marshall_from_haskell_var, to_haskell::marshall_to_haskell_var};
-use utils::{Buffer, RW};
 
-use crate::utils::{self, deserialize_vector_points, deserialize_vector_scalar_field};
+use crate::utils::{deserialize_vector_points, deserialize_vector_scalar_field};
 
-///
-/// # Safety
-/// The caller must make sure that correctly serialized scalars are passed.
-/// Correct serialization/deserialization is described in ToHaskell/FromHaskell trait.
-/// .
-#[no_mangle]
-pub unsafe extern "C" fn rust_wrapper_multi_scalar_multiplication(
-    points_var: *const u8,
-    points_len: usize,
-    scalars_var: *const u8,
-    scalars_len: usize,
-    out: *mut u8,
-    out_len: &mut usize,
-) {
-    let scalars =
-        marshall_from_haskell_var::<RW, Buffer<ScalarField>>(scalars_var, scalars_len, RW).0;
-    let points = marshall_from_haskell_var::<RW, Buffer<GAffine>>(points_var, points_len, RW).0;
-
-    let r: GAffine = G::msm(&points, &scalars).unwrap().into();
-
-    marshall_to_haskell_var(&r, out, out_len, RW);
-}
 // This is inner function from arkmsm crate, derived from benchmark results. May not be optimal for all configurations
 // https://github.com/snarkify/arkmsm/blob/main/src/msm.rs
 const fn get_opt_window_size(k: u32) -> u32 {
@@ -90,6 +65,6 @@ pub unsafe extern "C" fn rust_wrapper_multi_scalar_multiplication_without_serial
     let point_buffer = slice::from_raw_parts(points_var as *const u8, points_len);
 
     let res = multi_scalar_multiplication_without_serialization(scalar_buffer, point_buffer);
-    
+
     std::ptr::copy(res.as_ptr(), out as *mut u8, out_len);
 }

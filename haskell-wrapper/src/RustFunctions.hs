@@ -4,11 +4,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-
 module RustFunctions
-    ( rustScalarSum
-    , rustMultiScalarMultiplication
-    , rustMultiScalarMultiplicationWithoutSerialization
+    ( rustMultiScalarMultiplicationWithoutSerialization
     , rustMulFft
     , RustCore
     ) where
@@ -17,8 +14,7 @@ import qualified Data.ByteString                             as BS
 import           Data.Maybe                                  (fromJust)
 import qualified Data.Vector                                 as V
 import           Foreign
-import           Foreign.Rust.Marshall.Variable              (withPureBorshVarBuffer)
-import           Functions
+import           Foreign.C.String
 import           GHC.Base
 import           GHC.IO                                      (unsafePerformIO)
 import           GHC.Natural                                 (Natural)
@@ -27,6 +23,7 @@ import           GHC.Num.Natural                             (naturalFromAddr, n
 import           GHC.Ptr                                     (Ptr (..))
 import           GHC.TypeNats                                (KnownNat)
 import           Prelude                                     hiding (sum)
+import           System.Posix.DynamicLinker
 
 import           ZkFold.Base.Algebra.Basic.Field
 import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381
@@ -35,39 +32,20 @@ import           ZkFold.Base.Algebra.Polynomials.Univariate  (fromPolyVec)
 import           ZkFold.Base.Data.ByteString
 import           ZkFold.Base.Protocol.NonInteractiveProof    (CoreFunction (..), msm)
 
-rustScalarSum
-    :: forall
-        (a :: Type)
-        (b :: Natural)
-    .   ( ScalarField a ~ Zp b
-        , KnownNat b
-        )
-    => ScalarField a
-    -> ScalarField a
-    -> ScalarField a
-rustScalarSum a b = fromJust $ fromByteString @(ScalarField a) sum'
-    where
-        a' = toByteString a
-        b' = toByteString b
-        sum' = withPureBorshVarBuffer $ rustWrapperScalarSum a' b'
+libPath :: FilePath
+libPath = "./lib.so"
 
-rustMultiScalarMultiplication
-    :: forall
-        (a :: Type)
-        (b :: Natural)
-    .   ( ScalarField a ~ Zp b
-        , KnownNat b
-        , Binary (Point a)
-        )
-    => [Point a]
-    -> [ScalarField a]
-    -> Point a
-rustMultiScalarMultiplication points scalars = fromJust $ fromByteString @(Point a) res'
-    where
-        scalars' = mconcat $ toByteString <$> scalars
-        points'  = mconcat $ toByteString <$> points
-        res' = withPureBorshVarBuffer $ rustWrapperMultiScalarMultiplication points' scalars'
+type FunFFT =
+    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
 
+foreign import ccall "dynamic"
+    mkFunFFT :: FunPtr FunFFT -> FunFFT
+
+type FunMSM =
+    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
+
+foreign import ccall "dynamic"
+    mkFunMSM :: FunPtr FunMSM -> FunMSM
 
 rustMultiScalarMultiplicationWithoutSerialization
     :: forall
@@ -93,6 +71,10 @@ rustMultiScalarMultiplicationWithoutSerialization points scalars = unsafePerform
 
         runMSM :: IO (Point a)
         runMSM = do
+            dl <- dlopen libPath [RTLD_NOW]
+            msmPtr <- dlsym dl "rust_wrapper_multi_scalar_multiplication_without_serialization"
+            let !msmf = mkFunMSM $ castFunPtr msmPtr
+
             ptrScalars <- callocBytes @(ScalarField a) scalarsByteLength
             ptrPoints <- callocBytes @(Point a) pointsByteLength
 
@@ -101,10 +83,12 @@ rustMultiScalarMultiplicationWithoutSerialization points scalars = unsafePerform
 
             out <- mallocBytes pointSize
 
-            let !_ = rustWrapperMultiScalarMultiplicationWithoutSerialization
+            !_ <- msmf
                         (castPtr ptrPoints) pointsByteLength
                         (castPtr ptrScalars) scalarsByteLength
                         pointSize out
+
+            dlclose dl
 
             res <- BS.packCStringLen (out, pointSize)
 
@@ -208,6 +192,10 @@ rustMulFft l r = if lByteLength * rByteLength == 0 then V.empty else unsafePerfo
 
         runFFT :: IO (V.Vector f)
         runFFT = do
+            dl <- dlopen libPath [RTLD_NOW]
+            fftPtr <- dlsym dl "rust_wrapper_mul_fft"
+            let !fft = mkFunFFT $ castFunPtr fftPtr
+
             ptrL <- callocBytes @f lByteLength
             ptrR <- callocBytes @f rByteLength
 
@@ -217,9 +205,10 @@ rustMulFft l r = if lByteLength * rByteLength == 0 then V.empty else unsafePerfo
             let outLen = lByteLength + rByteLength - scalarSize
             out <- callocBytes outLen
 
-            let !_ = rustWrapperMulFFT
+            !_ <- fft
                         (castPtr ptrL) lByteLength
                         (castPtr ptrR) rByteLength
                         outLen out
+            dlclose dl
 
             V.fromList <$> peekArray @f (V.length l + V.length r - 1) (castPtr out)

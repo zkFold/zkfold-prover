@@ -37,11 +37,10 @@ pub unsafe extern "C" fn rust_wrapper_mul_fft(
     out_len: usize,
     out: *mut libc::c_char,
 ) {
-    
     let l = slice::from_raw_parts(l_var as *const u8, l_len);
     let r = slice::from_raw_parts(r_var as *const u8, r_len);
 
     let res = mul_fft(l, r);
-    
+
     std::ptr::copy(res.as_ptr(), out as *mut u8, out_len);
 }
