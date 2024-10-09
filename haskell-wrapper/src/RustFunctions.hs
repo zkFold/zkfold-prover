@@ -23,7 +23,7 @@ import           GHC.Num.Natural                             (naturalFromAddr, n
 import           GHC.Ptr                                     (Ptr (..))
 import           GHC.TypeNats                                (KnownNat)
 import           Prelude                                     hiding (sum)
-import      System.Posix.DynamicLinker
+import           System.Posix.DynamicLinker
 
 import           ZkFold.Base.Algebra.Basic.Field
 import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381

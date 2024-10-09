@@ -61,7 +61,6 @@ pub unsafe extern "C" fn rust_wrapper_multi_scalar_multiplication_without_serial
     out_len: usize,
     out: *mut libc::c_char,
 ) {
-    
     let scalar_buffer = slice::from_raw_parts(scalars_var as *const u8, scalars_len);
     let point_buffer = slice::from_raw_parts(points_var as *const u8, points_len);
 
