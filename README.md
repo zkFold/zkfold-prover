@@ -15,15 +15,16 @@ Install rustup and cargo (require `curl`):
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
+Install nightly:
+```bash
+rustup toolchain install nightly
+```
+
 <!-- gcc*
 ```bash
 sudo apt install gcc
 ``` -->
 
-Install cbindgen (require `gcc`):
-```bash
-cargo install --force cbindgen
-```
 <!-- openssl*
 ```bash
 sudo apt-get install libssl-dev
@@ -36,14 +37,6 @@ sudo apt install pkg-config
 Install cargo-c (require `openssl` and `pkg-config`):
 ```bash
 cargo install cargo-c
-```
-
-### Build Rust wrap
-
-You need to run the file `run.sh` from the project directory (or specify the path in the file).
-
-```bash
-source ./run.sh
 ```
 
 ### Build, Tests and Examples
