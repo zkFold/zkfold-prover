@@ -7,7 +7,6 @@ author:             ZkFold
 maintainer:         info@zkfold.io
 category:           Network
 build-type:         Custom
-extra-doc-files:    CHANGELOG.md
 
 custom-setup
   setup-depends:       
