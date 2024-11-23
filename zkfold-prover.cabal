@@ -104,7 +104,7 @@ test-suite wrapper-test
   build-depends:
     , base >= 4.16
     , zkfold-base
-    , haskell-wrapper
+    , zkfold-prover
     , hspec                                < 2.12
     , QuickCheck
     , vector
@@ -124,7 +124,7 @@ benchmark msm
       vector,
       zkfold-base,
       bytestring,
-      haskell-wrapper
+      zkfold-prover
 
 benchmark prove
     import:           options
@@ -141,7 +141,7 @@ benchmark prove
       vector,
       zkfold-base,
       bytestring,
-      haskell-wrapper
+      zkfold-prover
 
 benchmark poly-mul
     import:           options
@@ -158,6 +158,6 @@ benchmark poly-mul
       vector,
       zkfold-base,
       bytestring,
-      haskell-wrapper,
+      zkfold-prover,
       random,
       deepseq
