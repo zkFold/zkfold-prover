@@ -16,7 +16,9 @@ main = defaultMainWithHooks simpleUserHooks
 buildRustLib :: Args -> a -> IO HookedBuildInfo
 buildRustLib _ flags = do
 
-    buildResult <- system "cargo +nightly cbuild --release --manifest-path rust-wrapper/Cargo.toml"
+    dir <- getCurrentDirectory
+
+    buildResult <- system ("cargo +nightly cbuild --release --manifest-path " ++ dir ++ "/rust-wrapper/Cargo.toml")
     case buildResult of
       ExitSuccess          -> return ()
       ExitFailure exitCode -> throwIO $ userError $ "Build rust library failed with exit code " <> show exitCode
