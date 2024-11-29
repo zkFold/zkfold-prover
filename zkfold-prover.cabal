@@ -1,5 +1,5 @@
 cabal-version:      3.0
-name:               haskell-wrapper
+name:               zkfold-prover
 version:            0.1.0.0
 license:            BSD-3-Clause
 license-file:       LICENSE
@@ -7,7 +7,6 @@ author:             ZkFold
 maintainer:         info@zkfold.io
 category:           Network
 build-type:         Custom
-extra-doc-files:    CHANGELOG.md
 
 custom-setup
   setup-depends:       
@@ -105,7 +104,7 @@ test-suite wrapper-test
   build-depends:
     , base >= 4.16
     , zkfold-base
-    , haskell-wrapper
+    , zkfold-prover
     , hspec                                < 2.12
     , QuickCheck
     , vector
@@ -125,7 +124,7 @@ benchmark msm
       vector,
       zkfold-base,
       bytestring,
-      haskell-wrapper
+      zkfold-prover
 
 benchmark prove
     import:           options
@@ -142,7 +141,7 @@ benchmark prove
       vector,
       zkfold-base,
       bytestring,
-      haskell-wrapper
+      zkfold-prover
 
 benchmark poly-mul
     import:           options
@@ -159,6 +158,6 @@ benchmark poly-mul
       vector,
       zkfold-base,
       bytestring,
-      haskell-wrapper,
+      zkfold-prover,
       random,
       deepseq
