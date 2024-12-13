@@ -28,7 +28,7 @@ import           System.Posix.DynamicLinker
 import           ZkFold.Base.Algebra.Basic.Field
 import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381
 import           ZkFold.Base.Algebra.EllipticCurve.Class
-import           ZkFold.Base.Algebra.Polynomials.Univariate  (fromPolyVec)
+import           ZkFold.Base.Algebra.Polynomials.Univariate  (fromPoly, fromPolyVec, toPoly)
 import           ZkFold.Base.Data.ByteString
 import           ZkFold.Base.Protocol.NonInteractiveProof    (CoreFunction (..), msm)
 
@@ -181,6 +181,7 @@ instance CoreFunction BLS12_381_G1 RustCore where
                     (a:rs1, b:rs2)
             zipAndUnzip _ _ = ([],[])
 
+    polyMul x y = toPoly (rustMulFft @(ScalarField BLS12_381_G1) (fromPoly x) (fromPoly y))
 
 rustMulFft :: forall f . Storable f => V.Vector f -> V.Vector f -> V.Vector f
 rustMulFft l r = if lByteLength * rByteLength == 0 then V.empty else unsafePerformIO runFFT

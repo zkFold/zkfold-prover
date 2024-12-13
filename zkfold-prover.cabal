@@ -1,5 +1,5 @@
 cabal-version:      3.0
-name:               haskell-wrapper
+name:               zkfold-prover
 version:            0.1.0.0
 license:            BSD-3-Clause
 license-file:       LICENSE
@@ -7,7 +7,6 @@ author:             ZkFold
 maintainer:         info@zkfold.io
 category:           Network
 build-type:         Custom
-extra-doc-files:    CHANGELOG.md
 
 custom-setup
   setup-depends:       
@@ -87,7 +86,7 @@ library
   build-depends:
     , base >= 4.16
     , bytestring
-    , zkfold-base
+    , symbolic-base
     , vector
     , binary
     , unix
@@ -104,8 +103,8 @@ test-suite wrapper-test
     FFT
   build-depends:
     , base >= 4.16
-    , zkfold-base
-    , haskell-wrapper
+    , symbolic-base
+    , zkfold-prover
     , hspec                                < 2.12
     , QuickCheck
     , vector
@@ -123,9 +122,9 @@ benchmark msm
       tasty-bench,
       QuickCheck,
       vector,
-      zkfold-base,
+      symbolic-base,
       bytestring,
-      haskell-wrapper
+      zkfold-prover
 
 benchmark prove
     import:           options
@@ -140,9 +139,9 @@ benchmark prove
       tasty-bench,
       QuickCheck,
       vector,
-      zkfold-base,
+      symbolic-base,
       bytestring,
-      haskell-wrapper
+      zkfold-prover
 
 benchmark poly-mul
     import:           options
@@ -157,8 +156,8 @@ benchmark poly-mul
       tasty-bench,
       QuickCheck,
       vector,
-      zkfold-base,
+      symbolic-base,
       bytestring,
-      haskell-wrapper,
+      zkfold-prover,
       random,
       deepseq

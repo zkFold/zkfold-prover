@@ -24,8 +24,8 @@ main = do
     (Vector s) <- generate arbitrary :: IO (Vector Length (ScalarField BLS12_381_G1))
 
     let
-        points = V.fromList p
-        scalars = toPolyVec @(ScalarField BLS12_381_G1) @Length $ V.fromList s
+        points = p
+        scalars = toPolyVec @(ScalarField BLS12_381_G1) @Length s
 
     defaultMain
         [
