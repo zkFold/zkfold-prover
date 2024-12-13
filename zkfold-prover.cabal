@@ -86,7 +86,7 @@ library
   build-depends:
     , base >= 4.16
     , bytestring
-    , zkfold-base
+    , symbolic-base
     , vector
     , binary
     , unix
@@ -103,7 +103,7 @@ test-suite wrapper-test
     FFT
   build-depends:
     , base >= 4.16
-    , zkfold-base
+    , symbolic-base
     , zkfold-prover
     , hspec                                < 2.12
     , QuickCheck
@@ -122,7 +122,7 @@ benchmark msm
       tasty-bench,
       QuickCheck,
       vector,
-      zkfold-base,
+      symbolic-base,
       bytestring,
       zkfold-prover
 
@@ -139,7 +139,7 @@ benchmark prove
       tasty-bench,
       QuickCheck,
       vector,
-      zkfold-base,
+      symbolic-base,
       bytestring,
       zkfold-prover
 
@@ -156,7 +156,7 @@ benchmark poly-mul
       tasty-bench,
       QuickCheck,
       vector,
-      zkfold-base,
+      symbolic-base,
       bytestring,
       zkfold-prover,
       random,

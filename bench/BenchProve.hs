@@ -1,21 +1,26 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Main where
 
 import qualified Data.ByteString                             as BS
+import           GHC.Generics                                (U1 (U1))
 import           Prelude                                     hiding (Num (..), length, sum, take, (-))
 import           RustFunctions                               (RustCore)
 import           Test.QuickCheck                             (Arbitrary (arbitrary), generate)
 import           Test.Tasty.Bench
 
 import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1, BLS12_381_G2)
-import           ZkFold.Base.Protocol.ARK.Plonk              (Plonk)
 import           ZkFold.Base.Protocol.NonInteractiveProof
+import           ZkFold.Base.Protocol.Plonk                  (Plonk)
 
-type PlonkSizeBS = 128
-type PlonkBS n = Plonk PlonkSizeBS n BLS12_381_G1 BLS12_381_G2 BS.ByteString
+type PlonkBS n = Plonk U1 1 32 n BLS12_381_G1 BLS12_381_G2 BS.ByteString
+
+instance Arbitrary (U1 a) where
+  arbitrary = return U1
 
 main :: IO ()
 main = do
-    (TestData a w) <- generate arbitrary :: IO (NonInteractiveProofTestData (PlonkBS 2) HaskellCore)
+    a <- generate arbitrary :: IO (PlonkBS 2)
+    w <- generate arbitrary :: IO (Witness (PlonkBS 2))
 
     let spHaskell = setupProve @(PlonkBS 2) @HaskellCore a
         spRust    = setupProve @(PlonkBS 2) @RustCore    a
