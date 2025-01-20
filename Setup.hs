@@ -42,7 +42,7 @@ buildRustLib _ flags = do
             dirCond <- doesDirectoryExist (pathToDistNewstyle ++ "dist-newstyle/src/" ++ p)
             return $ dirCond && prefixCond) contents
           print $ depLibs
-          return $ pathToDistNewstyle ++ "src/" ++ (head depLibs)
+          return $ pathToDistNewstyle ++ "src/" ++ (head depLibs) ++ "/"
 
     putStrLn $ pathToRustWrapper
 
