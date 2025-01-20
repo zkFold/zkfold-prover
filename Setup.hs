@@ -17,6 +17,9 @@ main = defaultMainWithHooks simpleUserHooks
       preConf = buildRustLib
     }
 
+infi = do
+  infi
+
 buildRustLib :: Args -> a -> IO HookedBuildInfo
 buildRustLib _ flags = do
 
@@ -25,6 +28,7 @@ buildRustLib _ flags = do
 
     isNotDependency <- doesFileExist (pathToDistNewstyle ++ "rust-wrapper/Cargo.toml")
     
+    infi
     pathToRustWrapper <- if isNotDependency
         then return pathToDistNewstyle
         else do
