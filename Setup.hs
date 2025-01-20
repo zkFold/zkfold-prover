@@ -35,7 +35,7 @@ buildRustLib _ flags = do
     pathToRustWrapper <- if isNotDependency
         then return pathToDistNewstyle
         else do
-          contents <- listDirectory (pathToDistNewstyle ++ "src/")
+          contents <- listDirectory (pathToDistNewstyle ++ "dist-newstyle/src/")
           print $ contents
           let depLib = fromJust $ find (isPrefixOf "zkfold-pr") contents
           print $ depLib
