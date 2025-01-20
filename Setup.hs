@@ -17,9 +17,6 @@ main = defaultMainWithHooks simpleUserHooks
       preConf = buildRustLib
     }
 
-infi = do
-  infi
-
 buildRustLib :: Args -> a -> IO HookedBuildInfo
 buildRustLib _ flags = do
 
@@ -27,10 +24,6 @@ buildRustLib _ flags = do
     let pathToDistNewstyle = take (fromJust $ findIndex (isPrefixOf "dist-newstyle") (tails file)) file
 
     isNotDependency <- doesFileExist (pathToDistNewstyle ++ "rust-wrapper/Cargo.toml")
-
-    -- infi
-    print $ file
-    print $ pathToDistNewstyle
 
     pathToRustWrapper <- if isNotDependency
         then return pathToDistNewstyle
@@ -44,11 +37,9 @@ buildRustLib _ flags = do
           print $ depLibs
           return $ pathToDistNewstyle ++ "dist-newstyle/src/" ++ (head depLibs) ++ "/"
 
-    putStrLn $ pathToRustWrapper
-
     buildResult <- system ("cargo +nightly build --release " ++
       "--manifest-path " ++ pathToRustWrapper ++ "rust-wrapper/Cargo.toml " ++
-      "--artifact-dir=" ++ pathToRustWrapper ++ "libs/ -Z unstable-options"
+      "--artifact-dir=" ++ pathToDistNewstyle ++ "libs/ -Z unstable-options"
       )
 
     case buildResult of
