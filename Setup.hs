@@ -28,13 +28,17 @@ buildRustLib _ flags = do
 
     isNotDependency <- doesFileExist (pathToDistNewstyle ++ "rust-wrapper/Cargo.toml")
     
-    infi
+    -- infi
+    print $ file
+    print $ pathToDistNewstyle
+
     pathToRustWrapper <- if isNotDependency
         then return pathToDistNewstyle
         else do
           contents <- listDirectory (pathToDistNewstyle ++ "src/")
+          print $ contents
           let depLib = fromJust $ find (isPrefixOf "zkfold-pr") contents
-          
+          print $ depLib
           return $ pathToDistNewstyle ++ "src/" ++ depLib
 
     putStrLn $ pathToRustWrapper
