@@ -7,9 +7,8 @@ import           RustFunctions                               (rustDivFft, rustMu
 import           Test.Hspec                                  (describe, hspec, it, shouldBe)
 import           Test.QuickCheck                             (Testable (property))
 
-import           ZkFold.Base.Algebra.Basic.Class             (AdditiveMonoid (zero), MultiplicativeMonoid (one),
-                                                              MultiplicativeSemigroup ((*)))
-import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1, BLS12_381_GT (BLS12_381_GT))
+import           ZkFold.Base.Algebra.Basic.Class             (MultiplicativeSemigroup ((*)))
+import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1)
 import           ZkFold.Base.Algebra.EllipticCurve.Class     (EllipticCurve (ScalarField))
 import           ZkFold.Base.Algebra.Polynomials.Univariate  (deg, qr, toPoly)
 
