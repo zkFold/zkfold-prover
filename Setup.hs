@@ -37,9 +37,12 @@ buildRustLib _ flags = do
         else do
           contents <- listDirectory (pathToDistNewstyle ++ "dist-newstyle/src/")
           print $ contents
-          let depLib = fromJust $ find (isPrefixOf "zkfold-pr") contents
-          print $ depLib
-          return $ pathToDistNewstyle ++ "src/" ++ depLib
+          depLibs <- filterM (\p -> do
+            let prefixCond = isPrefixOf "zkfold-pr" p
+            dirCond <- doesDirectoryExist (pathToDistNewstyle ++ "dist-newstyle/src/" ++ p)
+            return $ dirCond && prefixCond) contents
+          print $ depLibs
+          return $ pathToDistNewstyle ++ "src/" ++ (head depLibs)
 
     putStrLn $ pathToRustWrapper
 
