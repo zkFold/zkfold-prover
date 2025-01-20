@@ -14,6 +14,7 @@ custom-setup
     , Cabal
     , process
     , directory
+    , pseudomacros
 
 Flag Pedantic
     Description: Enable pedantic build with -Werror
@@ -161,3 +162,23 @@ benchmark poly-mul
       zkfold-prover,
       random,
       deepseq
+
+benchmark poly-div
+    import:           options
+    main-is:          BenchPolyDiv.hs
+    hs-source-dirs:   bench
+    type:             exitcode-stdio-1.0
+    ghc-options:      
+      -rtsopts
+      -fprof-auto
+    build-depends: 
+      base, 
+      tasty-bench,
+      QuickCheck,
+      vector,
+      symbolic-base,
+      bytestring,
+      zkfold-prover,
+      random,
+      deepseq,
+      extra

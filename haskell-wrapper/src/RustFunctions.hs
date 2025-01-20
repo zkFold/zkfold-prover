@@ -7,6 +7,7 @@
 module RustFunctions
     ( rustMultiScalarMultiplicationWithoutSerialization
     , rustMulFft
+    , rustDivFft
     , RustCore
     ) where
 
@@ -22,9 +23,10 @@ import           GHC.Num.Integer                             (integerToInt#)
 import           GHC.Num.Natural                             (naturalFromAddr, naturalToAddr)
 import           GHC.Ptr                                     (Ptr (..))
 import           GHC.TypeNats                                (KnownNat)
-import           Prelude                                     hiding (sum)
+import           Prelude                                     hiding (rem, sum)
 import           System.Posix.DynamicLinker
 
+import           ZkFold.Base.Algebra.Basic.Class             (AdditiveMonoid (zero))
 import           ZkFold.Base.Algebra.Basic.Field
 import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381
 import           ZkFold.Base.Algebra.EllipticCurve.Class
@@ -33,13 +35,19 @@ import           ZkFold.Base.Data.ByteString
 import           ZkFold.Base.Protocol.NonInteractiveProof    (CoreFunction (..), msm)
 
 libPath :: FilePath
-libPath = "./lib.so"
+libPath = "libs/librust_wrapper.so"
 
-type FunFFT =
+type FunMulFFT =
+    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
+
+type FunDivFFT =
     CString -> Int -> CString -> Int -> Int -> CString -> IO ()
 
 foreign import ccall "dynamic"
-    mkFunFFT :: FunPtr FunFFT -> FunFFT
+    mkFunMulFFT :: FunPtr FunMulFFT -> FunMulFFT
+
+foreign import ccall "dynamic"
+    mkFunDivFFT :: FunPtr FunDivFFT -> FunDivFFT
 
 type FunMSM =
     CString -> Int -> CString -> Int -> Int -> CString -> IO ()
@@ -143,27 +151,27 @@ instance Storable Fq where
 infByteStringRepr :: [Word8]
 infByteStringRepr = replicate 47 0 <> (bit 6 : replicate 48 0)
 
-instance Storable (Point BLS12_381_G1) where
+instance forall f . (ScalarField f ~ Zp BLS12_381_Scalar, BaseField f ~ Zp BLS12_381_Base, BooleanOf f ~ Bool) =>  Storable (Point f) where
 
-  sizeOf :: Point BLS12_381_G1 -> Int
+  sizeOf :: Point f -> Int
   sizeOf _ = 96
 
-  alignment :: Point BLS12_381_G1 -> Int
+  alignment :: Point f -> Int
   alignment _ = alignment @Fq undefined
 
-  peek :: Ptr (Point BLS12_381_G1) -> IO (Point BLS12_381_G1)
+  peek :: Ptr (Point f) -> IO (Point f)
   peek ptr = do
-    a <- BS.packCStringLen (castPtr ptr, sizeOf @(Point BLS12_381_G1) undefined)
+    a <- BS.packCStringLen (castPtr ptr, sizeOf @(Point f) undefined)
     if BS.pack infByteStringRepr == a
-    then return Inf
+    then return $ Point zero zero True
     else do
         x <- peek @Fq (castPtr ptr)
         y <- peek @Fq (ptr `plusPtr` sizeOf @Fq undefined)
-        return $ Point x y
+        return $ Point x y False
 
-  poke :: Ptr (Point BLS12_381_G1) -> Point BLS12_381_G1 -> IO ()
-  poke ptr Inf = pokeArray (castPtr ptr) infByteStringRepr
-  poke ptr (Point x y) = do
+  poke :: Ptr (Point f) -> Point f -> IO ()
+  poke ptr (Point _ _ True) = pokeArray (castPtr ptr) infByteStringRepr
+  poke ptr (Point x y False) = do
     poke (castPtr ptr) x
     poke (castPtr ptr `plusPtr` sizeOf @Fq undefined) y
 
@@ -182,6 +190,10 @@ instance CoreFunction BLS12_381_G1 RustCore where
             zipAndUnzip _ _ = ([],[])
 
     polyMul x y = toPoly (rustMulFft @(ScalarField BLS12_381_G1) (fromPoly x) (fromPoly y))
+    polyQr x y = both toPoly $ rustDivFft @(ScalarField BLS12_381_G1) (fromPoly x) (fromPoly y)
+
+both :: (t -> b) -> (t, t) -> (b, b)
+both f (x, y) = (f x, f y)
 
 rustMulFft :: forall f . Storable f => V.Vector f -> V.Vector f -> V.Vector f
 rustMulFft l r = if lByteLength * rByteLength == 0 then V.empty else unsafePerformIO runFFT
@@ -195,7 +207,7 @@ rustMulFft l r = if lByteLength * rByteLength == 0 then V.empty else unsafePerfo
         runFFT = do
             dl <- dlopen libPath [RTLD_NOW]
             fftPtr <- dlsym dl "rust_wrapper_mul_fft"
-            let !fft = mkFunFFT $ castFunPtr fftPtr
+            let !fft = mkFunMulFFT $ castFunPtr fftPtr
 
             ptrL <- callocBytes @f lByteLength
             ptrR <- callocBytes @f rByteLength
@@ -210,6 +222,57 @@ rustMulFft l r = if lByteLength * rByteLength == 0 then V.empty else unsafePerfo
                         (castPtr ptrL) lByteLength
                         (castPtr ptrR) rByteLength
                         outLen out
+            free ptrL
+            free ptrR
             dlclose dl
 
-            V.fromList <$> peekArray @f (V.length l + V.length r - 1) (castPtr out)
+            !res <- V.fromList <$> peekArray @f (V.length l + V.length r - 1) (castPtr out)
+
+            free out
+
+            return res
+
+-- Should be without leading zeroes
+rustDivFft :: forall f . Storable f => V.Vector f -> V.Vector f -> (V.Vector f, V.Vector f)
+rustDivFft l r  | rByteLength == 0 = error "Polynomial division by zero"
+                | lByteLength < rByteLength = (V.empty, l)
+                | otherwise = unsafePerformIO runFFT
+    where
+        scalarSize = sizeOf (undefined :: f)
+
+        lByteLength = scalarSize * V.length l
+        rByteLength = scalarSize * V.length r
+
+        runFFT :: IO (V.Vector f, V.Vector f)
+        runFFT = do
+            dl <- dlopen libPath [RTLD_NOW]
+            fftPtr <- dlsym dl "rust_wrapper_div_fft"
+            let !fft = mkFunDivFFT $ castFunPtr fftPtr
+
+            ptrL <- callocBytes @f lByteLength
+            ptrR <- callocBytes @f rByteLength
+
+            pokeArray ptrL (V.toList l)
+            pokeArray ptrR (V.toList r)
+
+            let outLen = (V.length l + 1) * scalarSize
+            out <- callocBytes outLen
+
+            !_ <- fft
+                        (castPtr ptrL) lByteLength
+                        (castPtr ptrR) rByteLength
+                        outLen out
+
+            free ptrL
+            free ptrR
+            dlclose dl
+
+
+
+            !quo <- V.fromList <$> peekArray @f (V.length l - V.length r + 1) (castPtr out)
+            !rem <- V.fromList <$> peekArray @f (V.length r) (castPtr out `plusPtr` ((V.length l - V.length r + 1 ) * scalarSize))
+
+
+            free out
+
+            return (quo, rem)
