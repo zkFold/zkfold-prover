@@ -3,5 +3,5 @@ packages: .
 source-repository-package
   type: git
   location: https://github.com/zkFold/zkfold-base.git
-  tag: 544062ce7bb41da6f0e9fb58de53eb3377f9df22
+  tag: c8d4695e7f5e0140b76d819f82c4d41d1510b385
   subdir: symbolic-base
