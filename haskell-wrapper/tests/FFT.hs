@@ -3,14 +3,15 @@ module FFT (testFFT) where
 import           Control.Monad                               (unless)
 import qualified Data.Vector                                 as V
 import           Prelude                                     hiding (Num (..), sum, take)
-import           RustFunctions                               (rustMulFft, rustDivFft)
+import           RustFunctions                               (rustDivFft, rustMulFft)
 import           Test.Hspec                                  (describe, hspec, it, shouldBe)
 import           Test.QuickCheck                             (Testable (property))
 
-import           ZkFold.Base.Algebra.Basic.Class             (MultiplicativeSemigroup ((*)), MultiplicativeMonoid (one), AdditiveMonoid (zero))
+import           ZkFold.Base.Algebra.Basic.Class             (AdditiveMonoid (zero), MultiplicativeMonoid (one),
+                                                              MultiplicativeSemigroup ((*)))
 import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1, BLS12_381_GT (BLS12_381_GT))
 import           ZkFold.Base.Algebra.EllipticCurve.Class     (EllipticCurve (ScalarField))
-import           ZkFold.Base.Algebra.Polynomials.Univariate  (toPoly, qr, deg)
+import           ZkFold.Base.Algebra.Polynomials.Univariate  (deg, qr, toPoly)
 
 specMulFFT :: IO ()
 specMulFFT = hspec $ do

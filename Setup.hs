@@ -2,8 +2,8 @@
 import           Control.Exception                  (throwIO)
 import           Control.Monad
 import           Data.Char                          (isSpace)
+import           Data.List                          (dropWhile, find, findIndex, isPrefixOf, tails)
 import           Data.Maybe                         (fromJust)
-import           Data.List                          (dropWhile, isPrefixOf, tails, findIndex, find)
 import           Distribution.Simple
 import           Distribution.Types.HookedBuildInfo
 import           PseudoMacros
@@ -13,7 +13,7 @@ import           System.Process                     (readProcess, system)
 
 main :: IO ()
 main = defaultMainWithHooks simpleUserHooks
-    { 
+    {
       preConf = buildRustLib
     }
 
@@ -27,7 +27,7 @@ buildRustLib _ flags = do
     let pathToDistNewstyle = take (fromJust $ findIndex (isPrefixOf "dist-newstyle") (tails file)) file
 
     isNotDependency <- doesFileExist (pathToDistNewstyle ++ "rust-wrapper/Cargo.toml")
-    
+
     -- infi
     print $ file
     print $ pathToDistNewstyle
@@ -46,8 +46,8 @@ buildRustLib _ flags = do
 
     putStrLn $ pathToRustWrapper
 
-    buildResult <- system ("cargo +nightly build --release " ++ 
-      "--manifest-path " ++ pathToRustWrapper ++ "rust-wrapper/Cargo.toml " ++ 
+    buildResult <- system ("cargo +nightly build --release " ++
+      "--manifest-path " ++ pathToRustWrapper ++ "rust-wrapper/Cargo.toml " ++
       "--artifact-dir=" ++ pathToRustWrapper ++ "libs/ -Z unstable-options"
       )
 
