@@ -13,8 +13,9 @@ import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1, BLS1
 import           ZkFold.Base.Data.Vector                     (Vector)
 import           ZkFold.Base.Protocol.NonInteractiveProof
 import           ZkFold.Base.Protocol.Plonk                  (Plonk)
+import           RustBLS                                     (RustBLS12_381_G1, RustBLS12_381_G2)
 
-type PlonkBS n = Plonk U1 (Vector 1) 32 (Vector n) BLS12_381_G1 BLS12_381_G2 BS.ByteString
+type PlonkBS n = Plonk U1 (Vector 1) 32 (Vector n) RustBLS12_381_G1 RustBLS12_381_G2 BS.ByteString
 
 instance Arbitrary (U1 a) where
   arbitrary = return U1

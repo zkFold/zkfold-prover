@@ -82,6 +82,7 @@ library
   import: options
   exposed-modules:
       RustFunctions
+    , RustBLS
   hs-source-dirs:
       haskell-wrapper/src
   build-depends:
@@ -91,6 +92,8 @@ library
     , vector
     , binary
     , unix
+    , deepseq
+    , QuickCheck
   ghc-options:
     -O2
 

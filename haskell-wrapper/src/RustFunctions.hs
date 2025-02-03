@@ -8,7 +8,9 @@ module RustFunctions
     ( rustMultiScalarMultiplicationWithoutSerialization
     , rustMulFft
     , rustDivFft
+    , rustMulPoint
     , RustCore
+    , both
     ) where
 
 import qualified Data.ByteString                             as BS
@@ -30,7 +32,7 @@ import           ZkFold.Base.Algebra.Basic.Class             (AdditiveMonoid (ze
 import           ZkFold.Base.Algebra.Basic.Field
 import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381
 import           ZkFold.Base.Algebra.EllipticCurve.Class
-import           ZkFold.Base.Algebra.Polynomials.Univariate  (fromPoly, fromPolyVec, toPoly)
+import           ZkFold.Base.Algebra.Polynomials.Univariate  (fromPoly, fromPolyVec, toPoly, qr)
 import           ZkFold.Base.Data.ByteString
 import           ZkFold.Base.Protocol.NonInteractiveProof    (CoreFunction (..), msm)
 
@@ -54,6 +56,61 @@ type FunMSM =
 
 foreign import ccall "dynamic"
     mkFunMSM :: FunPtr FunMSM -> FunMSM
+
+type FunMul =
+    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
+
+foreign import ccall "dynamic"
+    mkFunMul :: FunPtr FunMul -> FunMul
+
+
+rustMulPoint
+    :: forall
+        (a :: Type)
+        (b :: Natural)
+    .   (ScalarField a ~ Zp b
+        , Binary (Point a)
+        , Storable (ScalarField a)
+        , Storable (Point a)
+        )
+    => Point a
+    -> ScalarField a
+    -> Point a
+rustMulPoint point scalar = unsafePerformIO runMSM
+    where
+
+        pointSize = sizeOf (undefined :: Point a)
+        scalarSize = sizeOf (undefined :: ScalarField a)
+
+        runMSM :: IO (Point a)
+        runMSM = do
+            dl <- dlopen libPath [RTLD_NOW]
+            mulPtr <- dlsym dl "rust_wrapper_mul"
+            let !mulf = mkFunMul $ castFunPtr mulPtr
+
+            ptrScalar <- callocBytes @(ScalarField a) scalarSize
+            ptrPoint <- callocBytes @(Point a) pointSize
+
+            poke ptrScalar scalar
+            poke ptrPoint point
+
+            out <- mallocBytes pointSize
+
+            !_ <- mulf
+                        (castPtr ptrPoint) pointSize
+                        (castPtr ptrScalar) scalarSize
+                        pointSize out
+
+            dlclose dl
+
+            res <- BS.packCStringLen (out, pointSize)
+
+            free ptrScalar
+            free ptrPoint
+            free out
+
+            return $ fromJust $ fromByteString @(Point a) res
+
 
 rustMultiScalarMultiplicationWithoutSerialization
     :: forall
@@ -80,7 +137,7 @@ rustMultiScalarMultiplicationWithoutSerialization points scalars = unsafePerform
         runMSM :: IO (Point a)
         runMSM = do
             dl <- dlopen libPath [RTLD_NOW]
-            msmPtr <- dlsym dl "rust_wrapper_multi_scalar_multiplication_without_serialization"
+            msmPtr <- dlsym dl "rust_wrapper_msm"
             let !msmf = mkFunMSM $ castFunPtr msmPtr
 
             ptrScalars <- callocBytes @(ScalarField a) scalarsByteLength

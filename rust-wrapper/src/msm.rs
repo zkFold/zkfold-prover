@@ -1,10 +1,12 @@
 use std::slice;
 
 use ark_bls12_381::G1Affine as GAffine;
+use ark_ec::CurveGroup;
 use ark_ff::PrimeField;
 use ark_msm::msm::VariableBaseMSM;
-use ark_serialize::CanonicalSerialize;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::log2;
+use ark_bls12_381::Fr as ScalarField;
 
 use crate::utils::{deserialize_vector_points, deserialize_vector_scalar_field};
 
@@ -21,7 +23,7 @@ const fn get_opt_window_size(k: u32) -> u32 {
     }
 }
 
-pub fn multi_scalar_multiplication_without_serialization(
+pub fn msm(
     scalar_buffer: &[u8],
     point_buffer: &[u8],
 ) -> Vec<u8> {
@@ -48,12 +50,31 @@ pub fn multi_scalar_multiplication_without_serialization(
     res
 }
 
+pub fn mul(
+    scalar_buffer: &[u8],
+    point_buffer: &[u8],
+) -> Vec<u8> {
+    let scalar: ScalarField = PrimeField::from_le_bytes_mod_order(scalar_buffer);
+
+    let mut bytes: Vec<u8> = point_buffer.to_vec();
+    let points_size = bytes.len();
+    bytes[0..(points_size >> 1)].reverse();
+    bytes[(points_size >> 1)..points_size].reverse();
+    let point = GAffine::deserialize_uncompressed_unchecked(&*bytes).unwrap();
+
+    let r: GAffine = (point * scalar).into_affine();
+    print!("Rust mul");
+    let mut res = Vec::new();
+    r.serialize_uncompressed(&mut res).unwrap();
+    res
+}
+
 ///
 /// # Safety
 /// The caller must ensure that valid pointers and sizes are passed.
 /// .
 #[no_mangle]
-pub unsafe extern "C" fn rust_wrapper_multi_scalar_multiplication_without_serialization(
+pub unsafe extern "C" fn rust_wrapper_msm(
     points_var: *const libc::c_char,
     points_len: usize,
     scalars_var: *const libc::c_char,
@@ -64,7 +85,29 @@ pub unsafe extern "C" fn rust_wrapper_multi_scalar_multiplication_without_serial
     let scalar_buffer = slice::from_raw_parts(scalars_var as *const u8, scalars_len);
     let point_buffer = slice::from_raw_parts(points_var as *const u8, points_len);
 
-    let res = multi_scalar_multiplication_without_serialization(scalar_buffer, point_buffer);
+    let res = msm(scalar_buffer, point_buffer);
+
+    std::ptr::copy(res.as_ptr(), out as *mut u8, out_len);
+}
+
+
+///
+/// # Safety
+/// The caller must ensure that valid pointers and sizes are passed.
+/// .
+#[no_mangle]
+pub unsafe extern "C" fn rust_wrapper_mul(
+    points_var: *const libc::c_char,
+    points_len: usize,
+    scalars_var: *const libc::c_char,
+    scalars_len: usize,
+    out_len: usize,
+    out: *mut libc::c_char,
+) {
+    let scalar_buffer = slice::from_raw_parts(scalars_var as *const u8, scalars_len);
+    let point_buffer = slice::from_raw_parts(points_var as *const u8, points_len);
+
+    let res = mul(scalar_buffer, point_buffer);
 
     std::ptr::copy(res.as_ptr(), out as *mut u8, out_len);
 }
