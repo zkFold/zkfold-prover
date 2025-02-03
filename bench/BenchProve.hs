@@ -4,6 +4,7 @@ module Main where
 import qualified Data.ByteString                             as BS
 import           GHC.Generics                                (U1 (U1))
 import           Prelude                                     hiding (Num (..), length, sum, take, (-))
+import           RustBLS                                     (RustBLS12_381_G1, RustBLS12_381_G2)
 import           RustFunctions                               (RustCore)
 import           Test.QuickCheck                             (Arbitrary (arbitrary), generate)
 import           Test.QuickCheck.Arbitrary                   (Arbitrary1 (liftArbitrary))
@@ -13,7 +14,6 @@ import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1, BLS1
 import           ZkFold.Base.Data.Vector                     (Vector)
 import           ZkFold.Base.Protocol.NonInteractiveProof
 import           ZkFold.Base.Protocol.Plonk                  (Plonk)
-import           RustBLS                                     (RustBLS12_381_G1, RustBLS12_381_G2)
 
 type PlonkBS n = Plonk U1 (Vector 1) 32 (Vector n) RustBLS12_381_G1 RustBLS12_381_G2 BS.ByteString
 

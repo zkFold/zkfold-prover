@@ -1,12 +1,12 @@
 use std::slice;
 
+use ark_bls12_381::Fr as ScalarField;
 use ark_bls12_381::G1Affine as GAffine;
 use ark_ec::CurveGroup;
 use ark_ff::PrimeField;
 use ark_msm::msm::VariableBaseMSM;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::log2;
-use ark_bls12_381::Fr as ScalarField;
 
 use crate::utils::{deserialize_vector_points, deserialize_vector_scalar_field};
 
@@ -23,10 +23,7 @@ const fn get_opt_window_size(k: u32) -> u32 {
     }
 }
 
-pub fn msm(
-    scalar_buffer: &[u8],
-    point_buffer: &[u8],
-) -> Vec<u8> {
+pub fn msm(scalar_buffer: &[u8], point_buffer: &[u8]) -> Vec<u8> {
     let scalars: Vec<_> = deserialize_vector_scalar_field(scalar_buffer)
         .iter()
         .map(|i| i.into_bigint())
@@ -50,10 +47,7 @@ pub fn msm(
     res
 }
 
-pub fn mul(
-    scalar_buffer: &[u8],
-    point_buffer: &[u8],
-) -> Vec<u8> {
+pub fn mul(scalar_buffer: &[u8], point_buffer: &[u8]) -> Vec<u8> {
     let scalar: ScalarField = PrimeField::from_le_bytes_mod_order(scalar_buffer);
 
     let mut bytes: Vec<u8> = point_buffer.to_vec();
@@ -89,7 +83,6 @@ pub unsafe extern "C" fn rust_wrapper_msm(
 
     std::ptr::copy(res.as_ptr(), out as *mut u8, out_len);
 }
-
 
 ///
 /// # Safety

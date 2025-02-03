@@ -32,7 +32,7 @@ import           ZkFold.Base.Algebra.Basic.Class             (AdditiveMonoid (ze
 import           ZkFold.Base.Algebra.Basic.Field
 import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381
 import           ZkFold.Base.Algebra.EllipticCurve.Class
-import           ZkFold.Base.Algebra.Polynomials.Univariate  (fromPoly, fromPolyVec, toPoly, qr)
+import           ZkFold.Base.Algebra.Polynomials.Univariate  (fromPoly, fromPolyVec, qr, toPoly)
 import           ZkFold.Base.Data.ByteString
 import           ZkFold.Base.Protocol.NonInteractiveProof    (CoreFunction (..), msm)
 

@@ -1,43 +1,44 @@
 {-# LANGUAGE DeriveAnyClass       #-}
 {-# LANGUAGE DerivingVia          #-}
+{-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedLists      #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module RustBLS where
 
-import           Control.DeepSeq                            (NFData)
+import           Control.DeepSeq                                   (NFData)
 import           Control.Monad
 import           Data.Bits
-import           Data.Foldable hiding (sum)
+import           Data.Foldable                                     hiding (sum)
+import           Data.Kind                                         (Type)
+import qualified Data.Vector                                       as V
 import           Data.Word
-import           GHC.Generics                               (Generic)
-import           Prelude                                    hiding (Num (..), (/), (^), Eq, sum)
+import           GHC.Generics                                      (Generic)
+import           Prelude                                           hiding (Eq, Num (..), sum, (/), (^))
+import qualified Prelude                                           as P
+import           RustFunctions                                     (RustCore, both, rustDivFft, rustMulFft,
+                                                                    rustMulPoint,
+                                                                    rustMultiScalarMultiplicationWithoutSerialization)
+import           Test.QuickCheck                                   (Arbitrary)
 
-import           ZkFold.Base.Algebra.Basic.Class hiding (sum)
+import           ZkFold.Base.Algebra.Basic.Class                   (sum)
+import           ZkFold.Base.Algebra.Basic.Class                   hiding (sum)
 import           ZkFold.Base.Algebra.Basic.Field
 import           ZkFold.Base.Algebra.Basic.Number
+import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381       hiding (Fq, Fr)
 import           ZkFold.Base.Algebra.EllipticCurve.Class
 import           ZkFold.Base.Algebra.EllipticCurve.Pairing
 import           ZkFold.Base.Algebra.Polynomials.Univariate
 import           ZkFold.Base.Data.ByteString
-import qualified Data.Vector                      as V
-
-import           RustFunctions (rustMulFft, rustMulPoint, rustMultiScalarMultiplicationWithoutSerialization, RustCore, both, rustDivFft)
-import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 hiding (Fq, Fr)
-import           ZkFold.Symbolic.Data.Bool (BoolType)
-import           ZkFold.Symbolic.Data.Conditional (Conditional)
-import           Data.Kind (Type)
-import qualified Prelude as P
-import           ZkFold.Symbolic.Data.Eq (Eq)
-import           Test.QuickCheck (Arbitrary)
-import           ZkFold.Base.Protocol.NonInteractiveProof.Internal (HaskellCore, CoreFunction(..))
-import           ZkFold.Base.Algebra.Basic.Class            (sum)
+import           ZkFold.Base.Protocol.NonInteractiveProof.Internal (CoreFunction (..), HaskellCore)
+import           ZkFold.Symbolic.Data.Bool                         (BoolType)
+import           ZkFold.Symbolic.Data.Conditional                  (Conditional)
+import           ZkFold.Symbolic.Data.Eq                           (Eq)
 
 type Fr = Zp BLS12_381_Scalar
 type Fq = Zp BLS12_381_Base
