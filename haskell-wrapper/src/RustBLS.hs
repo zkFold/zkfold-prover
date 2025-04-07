@@ -1,280 +1,525 @@
-{-# LANGUAGE DeriveAnyClass       #-}
+{-# LANGUAGE AllowAmbiguousTypes  #-}
 {-# LANGUAGE DerivingVia          #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedLists      #-}
 {-# LANGUAGE TypeApplications     #-}
-{-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module RustBLS where
 
-import           Control.DeepSeq                                   (NFData)
+import           Class
 import           Control.Monad
-import           Data.Bits
-import           Data.Foldable                                     hiding (sum)
-import           Data.Kind                                         (Type)
-import qualified Data.Vector                                       as V
-import           Data.Word
-import           GHC.Generics                                      (Generic)
-import           Prelude                                           hiding (Eq, Num (..), sum, (/), (^))
-import qualified Prelude                                           as P
-import           RustFunctions                                     (RustCore, both, rustDivFft, rustMulFft,
-                                                                    rustMulPoint,
-                                                                    rustMultiScalarMultiplicationWithoutSerialization)
-import           Test.QuickCheck                                   (Arbitrary)
+import           Conversion
+import qualified Data.Vector                                 as V
+import           Foreign
+import           Foreign.C.Types
+import           GHC.Base
+import           GHC.IO                                      (unsafePerformIO)
+import           GHC.Natural                                 (naturalToInteger)
+import           Poly
+import           Prelude                                     hiding (fromIntegral, negate, (+), (-), (^))
+import qualified Prelude                                     as P
+import           RustFunctions
+import           System.Posix.DynamicLinker
+import           Test.QuickCheck                             hiding (scale)
 
-import           ZkFold.Base.Algebra.Basic.Class                   (sum)
-import           ZkFold.Base.Algebra.Basic.Class                   hiding (sum)
-import           ZkFold.Base.Algebra.Basic.Field
+import           ZkFold.Base.Algebra.Basic.Class             hiding (sum)
 import           ZkFold.Base.Algebra.Basic.Number
-import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381       hiding (Fq, Fr)
+import qualified ZkFold.Base.Algebra.EllipticCurve.BLS12_381 as EC
+import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 hiding (Fq, Fr)
 import           ZkFold.Base.Algebra.EllipticCurve.Class
-import           ZkFold.Base.Algebra.EllipticCurve.Pairing
 import           ZkFold.Base.Algebra.Polynomials.Univariate
 import           ZkFold.Base.Data.ByteString
-import           ZkFold.Base.Protocol.NonInteractiveProof.Internal (CoreFunction (..), HaskellCore)
-import           ZkFold.Symbolic.Data.Bool                         (BoolType)
-import           ZkFold.Symbolic.Data.Conditional                  (Conditional)
-import           ZkFold.Symbolic.Data.Eq                           (Eq)
+import           ZkFold.Symbolic.MonadCircuit
 
-type Fr = Zp BLS12_381_Scalar
-type Fq = Zp BLS12_381_Base
+pointSize :: Int
+pointSize = sizeOf (undefined :: Rust_BLS12_381_G1_Point)
 
-data RustBLS12_381_G1
-    deriving (Generic, NFData)
+scalarSize :: Int
+scalarSize = sizeOf (undefined :: ScalarFieldOf Rust_BLS12_381_G1_Point)
 
-instance {-# OVERLAPPING #-} EllipticCurve RustBLS12_381_G1 where
-    type ScalarField RustBLS12_381_G1 = Fr
+------------------------------------- BLS12-381-G1 --------------------------------------
 
-    type BaseField RustBLS12_381_G1 = Fq
+instance ToConstant Fr where
+  type Const Fr = Natural
+  toConstant = toConstant . r2h
 
-    pointGen = pointXY
-        0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb
-        0x8b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1
+instance ResidueField Fr where
+  type IntegralOf Fr = Integer
+  fromIntegral = h2r . fromIntegral
+  toIntegral = toIntegral . r2h
 
-    add = addPoints
+instance Binary Fr where
+  put = put . r2h
+  get = h2r <$> get
 
-    mul scalar point = rustMulPoint point scalar
+instance EllipticCurve Rust_BLS12_381_G1_Point where
+  type CurveOf Rust_BLS12_381_G1_Point = "Rust BLS12-381-G1"
+  type BaseFieldOf Rust_BLS12_381_G1_Point = EC.Fq
 
-instance WeierstrassCurve RustBLS12_381_G1 where
-    weierstrassA = zero
+  isOnCurve w = isOnCurve $ r2h w
 
-    weierstrassB = fromConstant (4 :: Natural)
+instance {-# OVERLAPPING #-} Planar EC.Fq Rust_BLS12_381_G1_Point where
+  pointXY a b = h2r $ pointXY a b
 
-instance {-# OVERLAPPING #-} MultiplicativeSemigroup (Poly ((Zp BLS12_381_Scalar))) where
-    -- | If it is possible to calculate a primitive root of unity in the field, proceed with FFT multiplication.
-    -- Otherwise default to Karatsuba multiplication for polynomials of degree higher than 64 or use naive multiplication otherwise.
-    -- 64 is a threshold determined by benchmarking.
-    l * r = toPoly (rustMulFft (fromPoly l) (fromPoly r))
+instance Binary Rust_BLS12_381_G1_CompressedPoint where
+  put = put . r2h
+  get = h2r <$> get
 
-instance {-# OVERLAPPING #-} MultiplicativeMonoid (Poly ((Zp BLS12_381_Scalar))) where
-    one = toPoly $ V.singleton one
+instance Compressible Rust_BLS12_381_G1_Point where
+    type Compressed Rust_BLS12_381_G1_Point = Rust_BLS12_381_G1_CompressedPoint
+    pointCompressed = error "Not implemented: pointCompressed"
+    compress (Weierstrass w) = Weierstrass w
+    decompress (Weierstrass w) = Weierstrass w
 
-instance {-# OVERLAPPING #-} (KnownNat size) => MultiplicativeSemigroup (PolyVec ( (Zp BLS12_381_Scalar)) size) where
-    l * r = poly2vec $ toPoly $ rustMulFft (fromPoly $ vec2poly l) (fromPoly $ vec2poly r)
 
-instance {-# OVERLAPPING #-} (KnownNat size) => MultiplicativeMonoid (PolyVec ( (Zp BLS12_381_Scalar)) size) where
-    one = toPolyVec $ V.singleton one V.++ V.replicate (fromIntegral (value @size -! 1)) zero
+instance RustHaskell Rust_BLS12_381_G1_CompressedPoint BLS12_381_G1_CompressedPoint where
+  r2h = compress @BLS12_381_G1_Point . r2h . decompress @Rust_BLS12_381_G1_Point
 
-instance {-# OVERLAPPING #-} (KnownNat size) => Semiring (PolyVec ( (Zp BLS12_381_Scalar)) size)
+  h2r = compress @Rust_BLS12_381_G1_Point . h2r . decompress @BLS12_381_G1_Point
 
-instance {-# OVERLAPPING #-} (KnownNat size) => Ring (PolyVec ( (Zp BLS12_381_Scalar)) size)
+instance Pairing Rust_BLS12_381_G1_Point Rust_BLS12_381_G2_Point BLS12_381_GT where
+  pairing a b = pairing (r2h a) (r2h b)
+
+instance Exponent BLS12_381_GT Fr where
+  a ^ p = a ^ (r2h p)
+
+instance Eq Fr where
+  (==) a b = (r2h a) == (r2h b)
+
+instance {-# OVERLAPPING #-} Eq Rust_BLS12_381_G1_Point where
+  (==) a b = (r2h a) == (r2h b)
+
+instance {-# OVERLAPPING #-} Eq Rust_BLS12_381_G2_Point where
+  (==) a b = (r2h a) == (r2h b)
+instance Ord Fr where
+  a <= b = (<=) (r2h a) (r2h b)
+
+instance Show Fr where
+  show = show . r2h
+
+instance {-# OVERLAPPING #-} Show Rust_BLS12_381_G1_Point where
+  show rp = show $ r2h rp
+
+instance Exponent Fr Natural where
+  (^) a b = h2r $ (^) (r2h a) b
+
+instance Exponent Fr Integer where
+  (^) a b = h2r $ (^) (r2h a) b
+
+instance AdditiveSemigroup Fr where
+  (+) a b = h2r $ (+) (r2h a) (r2h b)
+
+instance AdditiveMonoid Fr where
+  zero = h2r zero
+
+instance AdditiveGroup Fr where
+  (-) a b = h2r $ (-) (r2h a) (r2h b)
+
+  negate a = h2r $ negate (r2h a)
+
+instance MultiplicativeSemigroup Fr where
+  (*) a b = unsafePerformIO runMul
+    where
+      runMul :: IO Fr
+      runMul = do
+        dl <- dlopen libPath [RTLD_NOW]
+        mulPtr <- dlsym dl "rust_wrapper_mul"
+        let !mulf = mkFunMul $ castFunPtr mulPtr
+
+        out <- callocForeignPtrBytes @CChar scalarSize
+        withForeignPtr (rawData $ rawScalar a) $ \ptr1 -> do
+          withForeignPtr (rawData $ rawScalar b) $ \ptr2 -> do
+            withForeignPtr out $ \outPtr -> do
+              mulf
+                (castPtr ptr1) scalarSize
+                (castPtr ptr2) scalarSize
+                scalarSize (castPtr outPtr)
+
+        dlclose dl
+        return $ Scalar $ RData $ out
+
+instance MultiplicativeMonoid Fr where
+  one = h2r one
+
+instance FromConstant Natural Fr where
+  fromConstant = h2r . fromConstant
+
+instance FromConstant Integer Fr where
+  fromConstant = h2r . fromConstant
+
+instance Scale Natural Fr where
+  scale a b = h2r $ scale a (r2h b)
+
+instance Scale Integer Fr where
+  scale a b = h2r $ scale a (r2h b)
+
+instance Semiring Fr where
+
+instance Ring Fr where
+
+instance Field Fr where
+  (//) a b = h2r $ (//) (r2h a) (r2h b)
+
+  finv x = h2r $ finv (r2h x)
+
+  rootOfUnity n = do
+    !a <- rootOfUnity n :: Maybe EC.Fr
+    return $ h2r a
+
+instance Scale Natural Rust_BLS12_381_G1_Point where
+  scale a b = h2r $ scale a (r2h b)
+
+instance Scale Integer Rust_BLS12_381_G1_Point where
+  scale a b = h2r $ scale a (r2h b)
+
+instance AdditiveSemigroup Rust_BLS12_381_G1_Point where
+  a + b = unsafePerformIO runSum
+    where
+      runSum :: IO Rust_BLS12_381_G1_Point
+      runSum = do
+        dl <- dlopen libPath [RTLD_NOW]
+        sumPtr <- dlsym dl "rust_wrapper_sum"
+        let !sumf = mkFunSum $ castFunPtr sumPtr
+
+        out <- callocForeignPtrBytes @CChar pointSize
+        withForeignPtr (rawData $ pointWeierstrass a) $ \ptr1 -> do
+          withForeignPtr (rawData $ pointWeierstrass b) $ \ptr2 -> do
+            withForeignPtr out $ \outPtr -> do
+              sumf
+                (castPtr ptr1) pointSize
+                (castPtr ptr2) pointSize
+                pointSize (castPtr outPtr)
+
+        dlclose dl
+        return $ Weierstrass $ RData $ out
+
+instance AdditiveMonoid Rust_BLS12_381_G1_Point where
+  zero = h2r zero
+
+instance AdditiveGroup Rust_BLS12_381_G1_Point where
+  (-) a b = h2r $ (-) (r2h a) (r2h b)
+
+  negate x = h2r $ negate (r2h x)
+
+instance Finite Fr where
+  type Order Fr = BLS12_381_Scalar
+
+instance Scale Fr Rust_BLS12_381_G1_Point where
+  scale scalar point = unsafePerformIO runScale
+    where
+      runScale :: IO Rust_BLS12_381_G1_Point
+      runScale = do
+        dl <- dlopen libPath [RTLD_NOW]
+        scalePtr <- dlsym dl "rust_wrapper_scale"
+        let !scalef = mkFunScale $ castFunPtr scalePtr
+
+        out <- callocForeignPtrBytes @CChar pointSize
+        withForeignPtr (rawData $ pointWeierstrass point) $ \pointPtr -> do
+          withForeignPtr (rawData $ rawScalar scalar) $ \scalarPtr -> do
+            withForeignPtr out $ \outPtr -> do
+              scalef
+                (castPtr pointPtr) pointSize
+                (castPtr scalarPtr) scalarSize
+                pointSize (castPtr outPtr)
+
+        dlclose dl
+
+        return $ Weierstrass $ RData out
+
+instance CyclicGroup Rust_BLS12_381_G1_Point where
+  type ScalarFieldOf Rust_BLS12_381_G1_Point = Fr
+
+  pointGen = h2r pointGen
+
+instance Arbitrary Rust_BLS12_381_G1_Point where
+  arbitrary = h2r <$> arbitrary
+
+instance Arbitrary Fr where
+  arbitrary = h2r <$> arbitrary
 
 ------------------------------------ BLS12-381 G2 ------------------------------------
 
-data RustBLS12_381_G2
-    deriving (Generic, NFData)
+instance {-# OVERLAPPING #-} Show Rust_BLS12_381_G2_Point where
+  show = show . r2h
 
-instance EllipticCurve RustBLS12_381_G2 where
+instance Scale Natural Rust_BLS12_381_G2_Point where
+  scale a b = h2r $ scale a (r2h b)
 
-    type ScalarField RustBLS12_381_G2 = Fr
+instance Scale Integer Rust_BLS12_381_G2_Point where
+  scale a b = h2r $ scale a (r2h b)
 
-    type BaseField RustBLS12_381_G2 = Fq2
+instance AdditiveSemigroup Rust_BLS12_381_G2_Point where
+  a + b = h2r $ (+) (r2h a) (r2h b)
 
-    pointGen = pointXY
-        (Ext2
-            0x24aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8
-            0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e)
-        (Ext2
-            0xce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801
-            0x606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be)
+instance AdditiveMonoid Rust_BLS12_381_G2_Point where
+  zero = h2r zero
 
-    add = addPoints
+instance AdditiveGroup Rust_BLS12_381_G2_Point where
 
-    mul = pointMul
+  (-) a b = h2r $ (-) (r2h a) (r2h b)
 
-instance WeierstrassCurve RustBLS12_381_G2 where
-    weierstrassA = zero
+  negate x = h2r $ negate (r2h x)
 
-    weierstrassB = fromConstant (4 :: Natural)
+instance Scale Fr Rust_BLS12_381_G2_Point where
+  scale s p = h2r $ scale (r2h s) (r2h p)
 
+instance CyclicGroup Rust_BLS12_381_G2_Point where
+  type ScalarFieldOf Rust_BLS12_381_G2_Point = Fr
 
-instance Binary (Point RustBLS12_381_G1) where
-    put (Point x y isInf) =
-        if isInf then foldMap putWord8 (bitReverse8 (bit 1) : replicate 95 0)
-                 else foldMap putWord8 (bytesOf 48 x <> bytesOf 48 y)
-    get = do
-        byte <- bitReverse8 <$> getWord8
-        let compressed = testBit byte 0
-            infinite = testBit byte 1
-        if infinite then do
-            skip (if compressed then 47 else 95)
-            return pointInf
-        else do
-            let byteXhead = bitReverse8 $ clearBit (clearBit (clearBit byte 0) 1) 2
-            bytesXtail <- replicateM 47 getWord8
-            let x = ofBytes (byteXhead:bytesXtail)
-                bigY = testBit byte 2
-            if compressed then return (decompress (pointCompressed x bigY))
-            else do
-                bytesY <- replicateM 48 getWord8
-                let y = ofBytes bytesY
-                return (pointXY x y)
+  pointGen = h2r pointGen
 
-instance Binary (CompressedPoint RustBLS12_381_G1) where
-    put (CompressedPoint x bigY isInf) =
-        if isInf then foldMap putWord8 (bitReverse8 (bit 0 .|. bit 1) : replicate 47 0) else
-        let
-            flags = bitReverse8 $ if bigY then bit 0 .|. bit 2 else bit 0
-            bytes = bytesOf 48 x
-        in foldMap putWord8 ((flags .|. head bytes) : tail bytes)
-    get = do
-        byte <- bitReverse8 <$> getWord8
-        let compressed = testBit byte 0
-            infinite = testBit byte 1
-        if infinite then do
-            skip (if compressed then 47 else 95)
-            return pointInf
-        else do
-            let byteXhead = bitReverse8 $ clearBit (clearBit (clearBit byte 0) 1) 2
-            bytesXtail <- replicateM 47 getWord8
-            let x = ofBytes (byteXhead:bytesXtail)
-                bigY = testBit byte 2
-            if compressed then return (pointCompressed x bigY)
-            else do
-                bytesY <- replicateM 48 getWord8
-                let y :: Fq = ofBytes bytesY
-                    bigY' = y > negate y
-                return (pointCompressed x bigY')
+instance Arbitrary Rust_BLS12_381_G2_Point where
+  arbitrary = h2r <$> arbitrary
 
-instance Binary (Point RustBLS12_381_G2) where
-    put (Point (Ext2 x0 x1) (Ext2 y0 y1) isInf) =
-        if isInf then foldMap putWord8 (bitReverse8 (bit 1) : replicate 191  0) else
-        let
-            bytes = bytesOf 48 x1
-              <> bytesOf 48 x0
-              <> bytesOf 48 y1
-              <> bytesOf 48 y0
-        in
-            foldMap putWord8 bytes
-    get = do
-        byte <- bitReverse8 <$> getWord8
-        let compressed = testBit byte 0
-            infinite = testBit byte 1
-        if infinite then do
-            skip (if compressed then 95 else 191)
-            return pointInf
-        else do
-            let byteX1head = bitReverse8 $ clearBit (clearBit (clearBit byte 0) 1) 2
-            bytesX1tail <- replicateM 47 getWord8
-            bytesX0 <- replicateM 48 getWord8
-            let x1 = ofBytes (byteX1head:bytesX1tail)
-                x0 = ofBytes bytesX0
-                bigY = testBit byte 2
-            if compressed then return (decompress (pointCompressed (Ext2 x0 x1) bigY))
-            else do
-                bytesY1 <- replicateM 48 getWord8
-                bytesY0 <- replicateM 48 getWord8
-                let y0 = ofBytes bytesY0
-                    y1 = ofBytes bytesY1
-                return (pointXY (Ext2 x0 x1) (Ext2 y0 y1))
+-- PolyVec
 
-instance Binary (CompressedPoint RustBLS12_381_G2) where
-    put (CompressedPoint (Ext2 x0 x1) bigY isInf) =
-        if isInf then foldMap putWord8 (bitReverse8 (bit 0 .|. bit 1) : replicate 95 0) else
-        let
-            flags = bitReverse8 $ if bigY then bit 0 .|. bit 2 else bit 0
-            bytes = bytesOf 48 x1 <> bytesOf 48 x0
-        in
-            foldMap putWord8 ((flags .|. head bytes) : tail bytes)
-    get = do
-        byte <- bitReverse8 <$> getWord8
-        let compressed = testBit byte 0
-            infinite = testBit byte 1
-        if infinite then do
-            skip (if compressed then 95 else 191)
-            return pointInf
-        else do
-            let byteX1head = bitReverse8 $ clearBit (clearBit (clearBit byte 0) 1) 2
-            bytesX1tail <- replicateM 47 getWord8
-            bytesX0 <- replicateM 48 getWord8
-            let x1 = ofBytes (byteX1head:bytesX1tail)
-                x0 = ofBytes bytesX0
-                x = Ext2 x0 x1
-                bigY = testBit byte 2
-            if compressed then return (pointCompressed (Ext2 x0 x1) bigY)
-            else do
-                bytesY1 <- replicateM 48 getWord8
-                bytesY0 <- replicateM 48 getWord8
-                let y0 = ofBytes bytesY0
-                    y1 = ofBytes bytesY1
-                    y :: Fq2 = Ext2 y0 y1
-                    bigY' = y > negate y
-                return (pointCompressed x bigY')
+instance UnivariateRingPolyVec Fr (RustPolyVec Fr) where
 
--- --------------------------------------- Pairing ---------------------------------------
+  type C (RustPolyVec Fr) = Fr
 
--- -- | An image of a pairing is a cyclic multiplicative subgroup of @'Fq12'@
--- -- of order @'BLS12_381_Scalar'@.
-newtype RustBLS12_381_GT = RustBLS12_381_GT Fq12
-    deriving newtype (P.Eq, Show, MultiplicativeSemigroup, MultiplicativeMonoid)
+  (.*.) :: forall size . (KnownNat size) => RustPolyVec Fr size -> RustPolyVec Fr size -> RustPolyVec Fr size
+  l .*. r = unsafePerformIO runHMul
+    where
+      runHMul :: IO (RustPolyVec Fr size)
+      runHMul = do
+        dl <- dlopen libPath [RTLD_NOW]
+        hmulPtr <- dlsym dl "rust_wrapper_hmul"
+        let !hmulf = mkFunHMul $ castFunPtr hmulPtr
 
-instance Exponent RustBLS12_381_GT Natural where
-    RustBLS12_381_GT a ^ p = RustBLS12_381_GT (a ^ p)
+        let valueSize = (fromInteger $ naturalToInteger $ value @size)
+        out <- callocForeignPtrBytes @CChar (scalarSize P.* valueSize)
 
-instance Exponent RustBLS12_381_GT Integer where
-    RustBLS12_381_GT a ^ p = RustBLS12_381_GT (a ^ p)
+        withForeignPtr (rawData $ rawPoly l) $ \lPtr -> do
+          withForeignPtr (rawData $ rawPoly r) $ \rPtr -> do
+            withForeignPtr out $ \outPtr -> do
+              hmulf
+                (castPtr lPtr) (valueSize P.* scalarSize)
+                (castPtr rPtr) (valueSize P.* scalarSize)
+                (valueSize P.* scalarSize) (castPtr outPtr)
 
-deriving via (NonZero Fq12) instance MultiplicativeGroup RustBLS12_381_GT
+        dlclose dl
 
-instance Finite RustBLS12_381_GT where
-    type Order RustBLS12_381_GT = BLS12_381_Scalar
+        return $ RustPV (RData out)
 
-instance  Pairing RustBLS12_381_G1 RustBLS12_381_G2 where
-    type TargetGroup RustBLS12_381_G1 RustBLS12_381_G2 = RustBLS12_381_GT
-    pairing a b
-      = RustBLS12_381_GT
-      $ finalExponentiation @BLS12_381_G2
-      $ millerAlgorithmBLS12 param a b
+  (.*) = flip (*.)
+
+  (*.) :: forall size . (KnownNat size) => Fr -> RustPolyVec Fr size -> RustPolyVec Fr size
+  (*.) a pv = unsafePerformIO runScalarMul
+    where
+      runScalarMul :: IO (RustPolyVec Fr size)
+      runScalarMul = do
+        dl <- dlopen libPath [RTLD_NOW]
+        scalarMulPtr <- dlsym dl "rust_wrapper_scalar_mul"
+        let !scalarMulf = mkFunScalarMul $ castFunPtr scalarMulPtr
+
+        let valueSize = (fromInteger $ naturalToInteger $ value @size)
+        out <- callocForeignPtrBytes @CChar (scalarSize P.* valueSize)
+
+        withForeignPtr (rawData $ rawScalar a) $ \aPtr -> do
+          withForeignPtr (rawData $ rawPoly pv) $ \pvPtr -> do
+            withForeignPtr out $ \outPtr -> do
+              scalarMulf
+                (castPtr aPtr) scalarSize
+                (castPtr pvPtr) (valueSize P.* scalarSize)
+                (valueSize P.* scalarSize) (castPtr outPtr)
+
+        dlclose dl
+
+        return $ RustPV (RData out)
+
+  (.+) = flip (+.)
+
+  (+.) :: forall size . (KnownNat size) => Fr -> RustPolyVec Fr size -> RustPolyVec Fr size
+  (+.) a pv = unsafePerformIO runScalarAdd
+    where
+      runScalarAdd :: IO (RustPolyVec Fr size)
+      runScalarAdd = do
+        dl <- dlopen libPath [RTLD_NOW]
+        scalarAddPtr <- dlsym dl "rust_wrapper_scalar_add"
+        let !scalarAddf = mkFunScalarAdd $ castFunPtr scalarAddPtr
+
+        let valueSize = (fromInteger $ naturalToInteger $ value @size)
+        out <- callocForeignPtrBytes @CChar (scalarSize P.* valueSize)
+
+        withForeignPtr (rawData $ rawScalar a) $ \aPtr -> do
+          withForeignPtr (rawData $ rawPoly pv) $ \pvPtr -> do
+            withForeignPtr out $ \outPtr -> do
+              scalarAddf
+                (castPtr aPtr) scalarSize
+                (castPtr pvPtr) (valueSize P.* scalarSize)
+                (valueSize P.* scalarSize) (castPtr outPtr)
+
+        dlclose dl
+
+        return $ RustPV (RData out)
+
+  toPolyVec :: forall size . (KnownNat size) => V.Vector Fr -> RustPolyVec Fr size
+  toPolyVec a = h2r $ toPolyVec (r2h <$> a)
+
+  fromPolyVec :: forall size . (KnownNat size) => RustPolyVec Fr size -> V.Vector Fr
+  fromPolyVec a = h2r <$> (fromPolyVec $ r2h a)
+
+  poly2vec :: forall poly size . (KnownNat size, UnivariateRingPolynomial Fr poly) => poly -> RustPolyVec Fr size
+  poly2vec = toPolyVec . fromPoly
+
+  vec2poly :: forall poly size . (KnownNat size, UnivariateRingPolynomial Fr poly) => RustPolyVec Fr size -> poly
+  vec2poly = toPoly . fromPolyVec
+
+  -- -- p(x) = a0
+  polyVecConstant :: forall size . (KnownNat size) => Fr -> RustPolyVec Fr size
+  polyVecConstant a0 = h2r $ polyVecConstant (r2h a0)
+
+  -- p(x) = a1 * x + a0
+  polyVecLinear :: forall size . (KnownNat size) => Fr -> Fr -> RustPolyVec Fr size
+  polyVecLinear a1 a0 = h2r $ polyVecLinear (r2h a1) (r2h a0)
+
+  -- p(x) = a2 * x^2 + a1 * x + a0
+  polyVecQuadratic :: forall size . (KnownNat size) => Fr -> Fr -> Fr -> RustPolyVec Fr size
+  polyVecQuadratic a2 a1 a0 = h2r $ polyVecQuadratic (r2h a2) (r2h a1) (r2h a0)
+
+  evalPolyVec :: forall size . (KnownNat size) => RustPolyVec Fr size -> Fr -> Fr
+  evalPolyVec pv x = h2r $ evalPolyVec (r2h pv) (r2h x)
+
+instance {-# OVERLAPPING #-} UnivariateFieldPolyVec Fr (RustPolyVec Fr) where
+
+  (./.) :: forall size . (KnownNat size) => RustPolyVec Fr size -> RustPolyVec Fr size -> RustPolyVec Fr size
+  l ./. r = h2r $ ((./.) (r2h l) (r2h r) :: PolyVec EC.Fr size)
+
+  polyVecZero :: forall size . (KnownNat size) => Natural -> RustPolyVec Fr size
+  polyVecZero n = h2r $ polyVecZero n
+
+  polyVecLagrange :: forall size . (KnownNat size) => Natural -> Natural -> Fr -> RustPolyVec Fr size
+  polyVecLagrange n i omega = h2r $ polyVecLagrange n i (r2h omega)
+
+  polyVecInLagrangeBasis :: forall n size . (KnownNat n, KnownNat size) => Fr -> RustPolyVec Fr n -> RustPolyVec Fr size
+  polyVecInLagrangeBasis omega pv = h2r $ polyVecInLagrangeBasis (r2h omega) (r2h pv)
+
+  polyVecGrandProduct :: forall size . (KnownNat size) => RustPolyVec Fr size -> RustPolyVec Fr size -> RustPolyVec Fr size -> Fr -> Fr -> RustPolyVec Fr size
+  polyVecGrandProduct a b sigma beta gamma = h2r $ polyVecGrandProduct (r2h a) (r2h b) (r2h sigma) (r2h beta) (r2h gamma)
+
+  polyVecDiv :: forall size . (KnownNat size) => RustPolyVec Fr size -> RustPolyVec Fr size -> RustPolyVec Fr size
+  polyVecDiv l r = unsafePerformIO runFFT
+    where
+      runFFT :: IO (RustPolyVec Fr size)
+      runFFT = do
+          dl <- dlopen libPath [RTLD_NOW]
+          fftPtr <- dlsym dl "rust_wrapper_div_fft"
+          let !fft = mkFunDivFFT $ castFunPtr fftPtr
+
+          let valueSize = (fromInteger $ naturalToInteger $ value @size)
+          out <- callocForeignPtrBytes @CChar (scalarSize P.* (fromInteger $ naturalToInteger $ value @size))
+
+          withForeignPtr (rawData $ rawPoly l) $ \lPtr -> do
+            withForeignPtr (rawData $ rawPoly r) $ \rPtr -> do
+              withForeignPtr out $ \outPtr -> do
+                fft
+                  (castPtr lPtr) (valueSize P.* scalarSize)
+                  (castPtr rPtr) (valueSize P.* scalarSize)
+                  (valueSize P.* scalarSize) (castPtr outPtr)
+
+          dlclose dl
+
+          return $ RustPV (RData out)
+
+  castPolyVec :: forall size size' . (KnownNat size, KnownNat size') => RustPolyVec Fr size -> RustPolyVec Fr size'
+  castPolyVec pv = h2r $ castPolyVec (r2h pv)
+
+instance (KnownNat size) => Scale Natural (RustPolyVec Fr size) where
+    scale c pv = h2r $ (scale c (r2h pv) :: PolyVec EC.Fr size)
+
+instance (KnownNat size) => Scale Integer (RustPolyVec Fr size) where
+    scale c pv = h2r $ (scale c (r2h pv) :: PolyVec EC.Fr size)
+
+instance (KnownNat size) => FromConstant Natural (RustPolyVec Fr size) where
+    fromConstant n = h2r $ fromConstant n
+
+instance (KnownNat size) => FromConstant Integer (RustPolyVec Fr size) where
+    fromConstant n = h2r $ fromConstant n
+
+instance (KnownNat size) => AdditiveSemigroup (RustPolyVec Fr size) where
+    l + r = h2r $ (+) (r2h l) (r2h r)
+
+instance (KnownNat size) => AdditiveMonoid (RustPolyVec Fr size) where
+    zero = h2r $ (zero :: PolyVec EC.Fr size)
+
+instance (KnownNat size) => AdditiveGroup (RustPolyVec Fr size) where
+    negate pv = h2r $ negate (r2h pv)
+
+instance (KnownNat size) => Exponent (RustPolyVec Fr size) Natural where
+    pv ^ n = h2r $ (^) (r2h pv) n
+
+instance {-# OVERLAPPING #-} (KnownNat size) => Scale (RustPolyVec Fr size) (RustPolyVec Fr size)
+
+-- TODO (Issue #18): check for overflow
+instance (KnownNat size) => MultiplicativeSemigroup (RustPolyVec Fr size) where
+    (*) l r = unsafePerformIO runFFT
       where
-        param = [-1
-          ,-1, 0,-1, 0, 0,-1, 0, 0, 0, 0, 0, 0, 0, 0,-1, 0
-          , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-          , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,-1, 0
-          , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-          ]
+        runFFT :: IO (RustPolyVec Fr size)
+        runFFT = do
+            dl <- dlopen libPath [RTLD_NOW]
+            fftPtr <- dlsym dl "rust_wrapper_mul_fft"
+            let !fft = mkFunDivFFT $ castFunPtr fftPtr
 
-instance {-# OVERLAPPING #-} CoreFunction RustBLS12_381_G1 HaskellCore   where
-    msm gs f = sum $ V.zipWith scale (fromPolyVec f) gs
-    polyMul = (*)
-    polyQr = qr
+            let valueSize = (fromInteger $ naturalToInteger $ value @size)
+            out <- callocForeignPtrBytes @CChar (scalarSize P.* (fromInteger $ naturalToInteger $ value @size))
 
-instance {-# OVERLAPPING #-} CoreFunction RustBLS12_381_G1 RustCore where
-    msm gs f = uncurry rustMultiScalarMultiplicationWithoutSerialization (zipAndUnzip points scalars)
-        where
-            points = V.toList gs
+            withForeignPtr (rawData $ rawPoly l) $ \lPtr -> do
+              withForeignPtr (rawData $ rawPoly r) $ \rPtr -> do
+                withForeignPtr out $ \outPtr -> do
+                  fft
+                    (castPtr lPtr) (valueSize P.* scalarSize)
+                    (castPtr rPtr) (valueSize P.* scalarSize)
+                    (valueSize P.* scalarSize) (castPtr outPtr)
 
-            scalars = V.toList $ fromPolyVec f
+            dlclose dl
 
-            zipAndUnzip :: [a] -> [b] -> ([a],[b])
-            zipAndUnzip (a:as) (b:bs)
-                = let (rs1, rs2) = zipAndUnzip as bs
-                    in
-                    (a:rs1, b:rs2)
-            zipAndUnzip _ _ = ([],[])
+            return $ RustPV (RData out)
 
-    polyMul x y = toPoly (rustMulFft @(ScalarField BLS12_381_G1) (fromPoly x) (fromPoly y))
-    polyQr x y = both toPoly $ rustDivFft @(ScalarField BLS12_381_G1) (fromPoly x) (fromPoly y)
+
+instance (KnownNat size) => MultiplicativeMonoid (RustPolyVec Fr size) where
+    one = h2r one
+
+instance (KnownNat size) => Semiring (RustPolyVec Fr size)
+
+instance (KnownNat size) => Ring (RustPolyVec Fr size)
+
+instance (KnownNat size) => Arbitrary (RustPolyVec Fr size) where
+    arbitrary = h2r <$> arbitrary
+
+instance (KnownNat size) => Show (RustPolyVec Fr size) where
+  show a = show $ r2h a
+
+-- TODO: avoid unnecessary casting from Vector to Ptr
+instance
+  ( KnownNat size
+  ) => Bilinear (V.Vector Rust_BLS12_381_G1_Point)
+                (RustPolyVec Fr size)
+                Rust_BLS12_381_G1_Point where
+    bilinear points scalars = unsafePerformIO runMSM
+      where
+        runMSM :: IO Rust_BLS12_381_G1_Point
+        runMSM = do
+            dl <- dlopen libPath [RTLD_NOW]
+            msmPtr <- dlsym dl "rust_wrapper_msm"
+            let !msmf = mkFunMSM $ castFunPtr msmPtr
+            let valueSize = min (fromInteger $ naturalToInteger $ value @size) (V.length points)
+
+            out <- callocForeignPtrBytes @CChar pointSize
+
+            pointPtr <- callocBytes @BLS12_381_G1_Point (valueSize P.* pointSize)
+            pokeArray pointPtr (V.toList (r2h <$> points))
+
+            withForeignPtr (rawData $ rawPoly scalars) $ \scalarPtr -> do
+              withForeignPtr out $ \outPtr -> do
+                msmf
+                  (castPtr pointPtr) (valueSize P.* pointSize)
+                  (castPtr scalarPtr) (valueSize P.* scalarSize)
+                  pointSize (castPtr outPtr)
+
+            free pointPtr
+            dlclose dl
+
+            return $ Weierstrass $ RData out

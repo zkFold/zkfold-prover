@@ -3,12 +3,12 @@ use ark_ff::{BigInt, BigInteger};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::DenseUVPolynomial;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use rust_wrapper::fft::mul_fft;
+use rust_wrapper::poly::div_fft;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("fft");
 
-    for size in 10..=14 {
+    for size in 14..=19 {
         let degree = 1 << size;
 
         let mut rng = &mut ark_std::test_rng();
@@ -31,11 +31,11 @@ fn criterion_benchmark(c: &mut Criterion) {
             .collect();
 
         group.bench_with_input(
-            BenchmarkId::new("FFT Multiplication", degree),
+            BenchmarkId::new("FFT Division", degree),
             &degree,
             |b, _size| {
                 b.iter(|| {
-                    mul_fft(&l_bytes_vec, &r_bytes_vec);
+                    div_fft(&l_bytes_vec, &r_bytes_vec);
                 })
             },
         );

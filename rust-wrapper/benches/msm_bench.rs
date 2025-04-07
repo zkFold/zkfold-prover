@@ -3,12 +3,12 @@ use ark_ff::BigInteger;
 use ark_msm::utils::generate_msm_inputs;
 use ark_serialize::CanonicalSerialize;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use rust_wrapper::msm::multi_scalar_multiplication_without_serialization;
+use rust_wrapper::scale::msm;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("msm");
-
-    for size in 10..=14 {
+    group.sample_size(10);
+    for size in 10..=20 {
         let (point_vec, scalar_vec) = generate_msm_inputs::<G1Affine>(1 << size);
 
         let points_bytes_vec: Vec<u8> = point_vec
@@ -30,7 +30,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
         group.bench_with_input(BenchmarkId::new("ArkMSM", size), &size, |b, _size| {
             b.iter(|| {
-                multi_scalar_multiplication_without_serialization(
+                msm(
                     &scalars_bytes_vec,
                     &points_bytes_vec,
                 );

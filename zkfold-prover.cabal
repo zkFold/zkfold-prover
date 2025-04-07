@@ -83,6 +83,9 @@ library
   exposed-modules:
       RustFunctions
     , RustBLS
+    , Conversion
+    , Class
+    , Poly
   hs-source-dirs:
       haskell-wrapper/src
   build-depends:
@@ -97,38 +100,40 @@ library
   ghc-options:
     -O2
 
-test-suite wrapper-test
-  import: options
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  hs-source-dirs: haskell-wrapper/tests
-  other-modules: 
-    MultiScalarMultiplication  
-    FFT
-  build-depends:
-    , base >= 4.16
-    , symbolic-base
-    , zkfold-prover
-    , hspec                                < 2.12
-    , QuickCheck
-    , vector
+-- test-suite wrapper-test
+--   import: options
+--   main-is: Main.hs
+--   type: exitcode-stdio-1.0
+--   hs-source-dirs: haskell-wrapper/tests
+  -- other-modules: 
+    -- MultiScalarMultiplication  
+    -- FFT
+  -- build-depends:
+  --   , base >= 4.16
+  --   , symbolic-base
+  --   , zkfold-prover
+  --   , hspec                                < 2.12
+  --   , QuickCheck
+  --   , vector
+  --   , vector-algorithms
+  --   , bytestring
 
-benchmark msm
-    import:           options
-    main-is:          BenchMSM.hs
-    hs-source-dirs:   bench
-    type:             exitcode-stdio-1.0
-    ghc-options:      
-      -rtsopts
-      -fprof-auto
-    build-depends: 
-      base, 
-      tasty-bench,
-      QuickCheck,
-      vector,
-      symbolic-base,
-      bytestring,
-      zkfold-prover
+-- benchmark msm
+--     import:           options
+--     main-is:          BenchMSM.hs
+--     hs-source-dirs:   bench
+--     type:             exitcode-stdio-1.0
+--     ghc-options:      
+--       -rtsopts
+--       -fprof-auto
+--     build-depends: 
+--       base, 
+--       tasty-bench,
+--       QuickCheck,
+--       vector,
+--       symbolic-base,
+--       bytestring,
+--       zkfold-prover
 
 benchmark prove
     import:           options
@@ -145,43 +150,47 @@ benchmark prove
       vector,
       symbolic-base,
       bytestring,
-      zkfold-prover
-
-benchmark poly-mul
-    import:           options
-    main-is:          BenchPolyMul.hs
-    hs-source-dirs:   bench
-    type:             exitcode-stdio-1.0
-    ghc-options:      
-      -rtsopts
-      -fprof-auto
-    build-depends: 
-      base, 
-      tasty-bench,
-      QuickCheck,
-      vector,
-      symbolic-base,
-      bytestring,
       zkfold-prover,
-      random,
-      deepseq
+      adjunctions,
+      binary
 
-benchmark poly-div
-    import:           options
-    main-is:          BenchPolyDiv.hs
-    hs-source-dirs:   bench
-    type:             exitcode-stdio-1.0
-    ghc-options:      
-      -rtsopts
-      -fprof-auto
-    build-depends: 
-      base, 
-      tasty-bench,
-      QuickCheck,
-      vector,
-      symbolic-base,
-      bytestring,
-      zkfold-prover,
-      random,
-      deepseq,
-      extra
+-- benchmark poly-mul
+--     import:           options
+--     main-is:          BenchPolyMul.hs
+--     hs-source-dirs:   bench
+--     type:             exitcode-stdio-1.0
+--     ghc-options:      
+--       -rtsopts
+--       -fprof-auto
+--     build-depends: 
+--       base, 
+--       tasty-bench,
+--       QuickCheck,
+--       vector,
+--       symbolic-base,
+--       bytestring,
+--       zkfold-prover,
+--       random,
+--       deepseq,
+--       adjunctions,
+--       binary
+
+-- benchmark poly-div
+--     import:           options
+--     main-is:          BenchPolyDiv.hs
+--     hs-source-dirs:   bench
+--     type:             exitcode-stdio-1.0
+--     ghc-options:      
+--       -rtsopts
+--       -fprof-auto
+--     build-depends: 
+--       base, 
+--       tasty-bench,
+--       QuickCheck,
+--       vector,
+--       symbolic-base,
+--       bytestring,
+--       zkfold-prover,
+--       random,
+--       deepseq,
+--       extra

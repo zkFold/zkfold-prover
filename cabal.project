@@ -1,7 +1,12 @@
 packages: .
 
+allow-newer: 
+    base                ,
+    template-haskell    , 
+    deepseq
+
 source-repository-package
   type: git
   location: https://github.com/zkFold/zkfold-base.git
-  tag: c8d4695e7f5e0140b76d819f82c4d41d1510b385
+  tag: 2534355ec0746f5bcce59bb61aef146ded30674a 
   subdir: symbolic-base

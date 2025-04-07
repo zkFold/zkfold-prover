@@ -31,11 +31,11 @@ name = "msm_bench"
 harness = false
 
 [[bench]]
-name = "div_bench"
+name = "div_fft_bench"
 harness = false
 
 [[bench]]
-name = "fft_bench"
+name = "mul_fft_bench"
 harness = false
 
 [features]

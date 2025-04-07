@@ -1,42 +1,48 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
 module Main where
 
+import           Class
 import qualified Data.ByteString                             as BS
-import           GHC.Generics                                (U1 (U1))
-import           Prelude                                     hiding (Num (..), length, sum, take, (-))
-import           RustBLS                                     (RustBLS12_381_G1, RustBLS12_381_G2)
-import           RustFunctions                               (RustCore)
+import           Poly
+import           Prelude
+import           RustBLS                                     ()
 import           Test.QuickCheck                             (Arbitrary (arbitrary), generate)
-import           Test.QuickCheck.Arbitrary                   (Arbitrary1 (liftArbitrary))
 import           Test.Tasty.Bench
 
-import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1, BLS12_381_G2)
-import           ZkFold.Base.Data.Vector                     (Vector)
+import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1_Point, BLS12_381_G2_Point)
+import           ZkFold.Base.Algebra.EllipticCurve.Class     (CyclicGroup (..))
+import           ZkFold.Base.Algebra.Polynomials.Univariate  (PolyVec)
+import           ZkFold.Base.Data.Vector                     (Vector (..))
 import           ZkFold.Base.Protocol.NonInteractiveProof
-import           ZkFold.Base.Protocol.Plonk                  (Plonk)
+import           ZkFold.Base.Protocol.Plonkup
 
-type PlonkBS n = Plonk U1 (Vector 1) 32 (Vector n) RustBLS12_381_G1 RustBLS12_381_G2 BS.ByteString
+type RustPlonkBS n = Plonkup (Vector 1) 32 (Vector n)
+    Rust_BLS12_381_G1_Point
+    Rust_BLS12_381_G2_Point
+    BS.ByteString
+    (RustPolyVec (ScalarFieldOf Rust_BLS12_381_G1_Point))
 
-instance Arbitrary (U1 a) where
-  arbitrary = return U1
-
-instance Arbitrary1 U1 where
-  liftArbitrary _ = return U1
+type HaskellPlonkBS n = Plonkup (Vector 1) 32 (Vector n)
+    BLS12_381_G1_Point
+    BLS12_381_G2_Point
+    BS.ByteString
+    (PolyVec (ScalarFieldOf BLS12_381_G1_Point))
 
 main :: IO ()
 main = do
-    a <- generate arbitrary :: IO (PlonkBS 2)
-    w <- generate arbitrary :: IO (Witness (PlonkBS 2))
+  a  <- generate arbitrary :: IO (HaskellPlonkBS 2)
+  a' <- generate arbitrary :: IO (RustPlonkBS 2)
+  w  <- generate arbitrary :: IO (Witness (HaskellPlonkBS 2))
+  w' <- generate arbitrary :: IO (Witness (RustPlonkBS 2))
 
-    let spHaskell = setupProve @(PlonkBS 2) @HaskellCore a
-        spRust    = setupProve @(PlonkBS 2) @RustCore    a
+  let spHaskell = setupProve @(HaskellPlonkBS 2) a
+      spRust    = setupProve @(RustPlonkBS 2) a'
 
-    defaultMain
-        [
-            bgroup "Prove group"
+  defaultMain
+    [
+      bgroup "Prove group"
 
-            [ bench "Haskell core" $ nf (show . uncurry (prove @(PlonkBS 2) @HaskellCore)) (spHaskell, w)
-            , bcompare "Haskell core" $
-                bench "Rust core" $ nf (show . uncurry (prove @(PlonkBS 2) @RustCore)) (spRust, w)
-            ]
-        ]
+      [ bench "Haskell" $ nf (show . uncurry (prove @(HaskellPlonkBS 2))) (spHaskell, w)
+      , bcompare "Haskell" $
+          bench "Rust" $ nf (show . uncurry (prove @(RustPlonkBS 2))) (spRust, w')
+      ]
+    ]
