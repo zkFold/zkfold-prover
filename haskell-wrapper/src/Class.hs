@@ -6,6 +6,7 @@ import           Control.DeepSeq
 import           Foreign
 import           Foreign.C.Types
 import           Prelude
+
 import           ZkFold.Base.Algebra.EllipticCurve.Class
 
 libPath :: FilePath
