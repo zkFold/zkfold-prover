@@ -1,0 +1,7 @@
+cradle:
+  cabal:
+    - path: "haskell-wrapper/src"
+      component: "lib:zkfold-prover"
+
+    - path: "bench/BenchProve.hs"
+      component: "bench:prove"

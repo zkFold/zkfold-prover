@@ -40,7 +40,7 @@ ops = [ ("Haskell division", qr)
 
 benchOps :: Prime a => Int -> [(String, Poly (Zp a) -> Poly (Zp a) -> (Poly (Zp a), Poly (Zp a))    )] -> Benchmark
 benchOps size testOps = env (polynomials size) $ \ ~(p1, p2) ->
-    bgroup ("Multiplying polynomials of size " <> show size) $
+    bgroup ("Division polynomials of size " <> show size) $
             flip fmap testOps $ \(desc, op) -> bench desc $ nf (uncurry op) (p1, p2)
 
 main :: IO ()
