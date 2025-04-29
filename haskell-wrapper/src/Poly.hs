@@ -3,22 +3,21 @@
 
 module Poly where
 
-import           Class
-import           Control.DeepSeq                            (NFData (..))
+import           Control.DeepSeq                      (NFData (..))
 import           Conversion
-import qualified Data.Vector                                as V
+import qualified Data.Vector                          as V
 import           Foreign
 import           GHC.Base
-import           GHC.Generics                               (Generic)
-import           GHC.IO                                     (unsafePerformIO)
-import           Prelude                                    hiding (drop, length, product, replicate, sum, take, (/),
-                                                             (^))
+import           GHC.Generics                         (Generic)
+import           GHC.IO                               (unsafePerformIO)
+import           Prelude                              hiding (drop, length, product, replicate, sum, take, (/), (^))
+import           Types
 
-import           ZkFold.Base.Algebra.Basic.Class            (Ring)
-import           ZkFold.Base.Algebra.Basic.Number           (KnownNat, Natural, value)
-import           ZkFold.Base.Algebra.Polynomials.Univariate (PolyVec, fromPolyVec, toPolyVec)
+import           ZkFold.Algebra.Class                 (Ring)
+import           ZkFold.Algebra.Number                (KnownNat, Natural, value)
+import           ZkFold.Algebra.Polynomial.Univariate (PolyVec, fromPolyVec, toPolyVec)
 
-data RustPolyVec a (size :: Natural) = RustPV { rawPoly :: RustData }
+newtype RustPolyVec a (size :: Natural) = RustPV { rawPoly :: RustData }
     deriving (Generic)
 
 instance NFData (RustPolyVec a size) where

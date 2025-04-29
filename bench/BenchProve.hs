@@ -1,19 +1,19 @@
 module Main where
 
-import           Class
-import qualified Data.ByteString                             as BS
+import qualified Data.ByteString                        as BS
 import           Poly
 import           Prelude
-import           RustBLS                                     ()
-import           Test.QuickCheck                             (Arbitrary (arbitrary), generate)
+import           RustBLS                                ()
+import           Test.QuickCheck                        (Arbitrary (arbitrary), generate)
 import           Test.Tasty.Bench
+import           Types
 
-import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1_Point, BLS12_381_G2_Point)
-import           ZkFold.Base.Algebra.EllipticCurve.Class     (CyclicGroup (..))
-import           ZkFold.Base.Algebra.Polynomials.Univariate  (PolyVec)
-import           ZkFold.Base.Data.Vector                     (Vector (..))
-import           ZkFold.Base.Protocol.NonInteractiveProof
-import           ZkFold.Base.Protocol.Plonkup
+import           ZkFold.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1_Point, BLS12_381_G2_Point)
+import           ZkFold.Algebra.EllipticCurve.Class     (CyclicGroup (..))
+import           ZkFold.Algebra.Polynomial.Univariate   (PolyVec)
+import           ZkFold.Data.Vector                     (Vector (..))
+import           ZkFold.Protocol.NonInteractiveProof
+import           ZkFold.Protocol.Plonkup
 
 type RustPlonkBS n = Plonkup (Vector 1) 32 (Vector n)
     Rust_BLS12_381_G1_Point

@@ -84,7 +84,7 @@ library
       RustFunctions
     , RustBLS
     , Conversion
-    , Class
+    , Types
     , Poly
   hs-source-dirs:
       haskell-wrapper/src

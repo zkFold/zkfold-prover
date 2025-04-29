@@ -9,29 +9,29 @@
 
 module RustBLS where
 
-import           Class
 import           Control.Monad
 import           Conversion
-import qualified Data.Vector                                 as V
+import qualified Data.Vector                            as V
 import           Foreign
 import           Foreign.C.Types
 import           GHC.Base
-import           GHC.IO                                      (unsafePerformIO)
-import           GHC.Natural                                 (naturalToInteger)
+import           GHC.IO                                 (unsafePerformIO)
+import           GHC.Natural                            (naturalToInteger)
 import           Poly
-import           Prelude                                     hiding (fromIntegral, negate, (+), (-), (^))
-import qualified Prelude                                     as P
+import           Prelude                                hiding (fromIntegral, negate, (+), (-), (^))
+import qualified Prelude                                as P
 import           RustFunctions
 import           System.Posix.DynamicLinker
-import           Test.QuickCheck                             hiding (scale)
+import           Test.QuickCheck                        hiding (scale)
+import           Types
 
-import           ZkFold.Base.Algebra.Basic.Class             hiding (sum)
-import           ZkFold.Base.Algebra.Basic.Number
-import qualified ZkFold.Base.Algebra.EllipticCurve.BLS12_381 as EC
-import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 hiding (Fq, Fr)
-import           ZkFold.Base.Algebra.EllipticCurve.Class
-import           ZkFold.Base.Algebra.Polynomials.Univariate
-import           ZkFold.Base.Data.ByteString
+import           ZkFold.Algebra.Class                   hiding (sum)
+import qualified ZkFold.Algebra.EllipticCurve.BLS12_381 as EC
+import           ZkFold.Algebra.EllipticCurve.BLS12_381 hiding (Fq, Fr)
+import           ZkFold.Algebra.EllipticCurve.Class
+import           ZkFold.Algebra.Number
+import           ZkFold.Algebra.Polynomial.Univariate
+import           ZkFold.Data.ByteString
 import           ZkFold.Symbolic.MonadCircuit
 
 pointSize :: Int
@@ -40,7 +40,7 @@ pointSize = sizeOf (undefined :: Rust_BLS12_381_G1_Point)
 scalarSize :: Int
 scalarSize = sizeOf (undefined :: ScalarFieldOf Rust_BLS12_381_G1_Point)
 
-------------------------------------- BLS12-381-G1 --------------------------------------
+------------------------------------- Fr --------------------------------------
 
 instance ToConstant Fr where
   type Const Fr = Natural
@@ -55,53 +55,14 @@ instance Binary Fr where
   put = put . r2h
   get = h2r <$> get
 
-instance EllipticCurve Rust_BLS12_381_G1_Point where
-  type CurveOf Rust_BLS12_381_G1_Point = "Rust BLS12-381-G1"
-  type BaseFieldOf Rust_BLS12_381_G1_Point = EC.Fq
-
-  isOnCurve w = isOnCurve $ r2h w
-
-instance {-# OVERLAPPING #-} Planar EC.Fq Rust_BLS12_381_G1_Point where
-  pointXY a b = h2r $ pointXY a b
-
-instance Binary Rust_BLS12_381_G1_CompressedPoint where
-  put = put . r2h
-  get = h2r <$> get
-
-instance Compressible Rust_BLS12_381_G1_Point where
-    type Compressed Rust_BLS12_381_G1_Point = Rust_BLS12_381_G1_CompressedPoint
-    pointCompressed = error "Not implemented: pointCompressed"
-    compress (Weierstrass w) = Weierstrass w
-    decompress (Weierstrass w) = Weierstrass w
-
-
-instance RustHaskell Rust_BLS12_381_G1_CompressedPoint BLS12_381_G1_CompressedPoint where
-  r2h = compress @BLS12_381_G1_Point . r2h . decompress @Rust_BLS12_381_G1_Point
-
-  h2r = compress @Rust_BLS12_381_G1_Point . h2r . decompress @BLS12_381_G1_Point
-
-instance Pairing Rust_BLS12_381_G1_Point Rust_BLS12_381_G2_Point BLS12_381_GT where
-  pairing a b = pairing (r2h a) (r2h b)
-
 instance Exponent BLS12_381_GT Fr where
   a ^ p = a ^ (r2h p)
 
 instance Eq Fr where
   (==) a b = (r2h a) == (r2h b)
 
-instance {-# OVERLAPPING #-} Eq Rust_BLS12_381_G1_Point where
-  (==) a b = (r2h a) == (r2h b)
-
-instance {-# OVERLAPPING #-} Eq Rust_BLS12_381_G2_Point where
-  (==) a b = (r2h a) == (r2h b)
 instance Ord Fr where
   a <= b = (<=) (r2h a) (r2h b)
-
-instance Show Fr where
-  show = show . r2h
-
-instance {-# OVERLAPPING #-} Show Rust_BLS12_381_G1_Point where
-  show rp = show $ r2h rp
 
 instance Exponent Fr Natural where
   (^) a b = h2r $ (^) (r2h a) b
@@ -139,7 +100,7 @@ instance MultiplicativeSemigroup Fr where
                 scalarSize (castPtr outPtr)
 
         dlclose dl
-        return $ Scalar $ RData $ out
+        return $ RScalar $ RData $ out
 
 instance MultiplicativeMonoid Fr where
   one = h2r one
@@ -169,6 +130,42 @@ instance Field Fr where
     !a <- rootOfUnity n :: Maybe EC.Fr
     return $ h2r a
 
+instance Arbitrary Fr where
+  arbitrary = h2r <$> arbitrary
+
+instance Show Fr where
+  show = show . r2h
+
+------------------------------------ BLS12-381-G1 --------------------------------------
+
+instance EllipticCurve Rust_BLS12_381_G1_Point where
+  type CurveOf Rust_BLS12_381_G1_Point = "Rust BLS12-381-G1"
+  type BaseFieldOf Rust_BLS12_381_G1_Point = EC.Fq
+
+  isOnCurve w = isOnCurve $ r2h w
+
+instance Planar EC.Fq Rust_BLS12_381_G1_Point where
+  pointXY a b = h2r $ pointXY a b
+
+instance Binary Rust_BLS12_381_G1_CompressedPoint where
+  put = put . r2h
+  get = h2r <$> get
+
+instance Compressible Rust_BLS12_381_G1_Point where
+    type Compressed Rust_BLS12_381_G1_Point = Rust_BLS12_381_G1_CompressedPoint
+    pointCompressed = error "Not implemented: pointCompressed"
+    compress (RPoint w) = RPoint w
+    decompress (RPoint w) = RPoint w
+
+instance RustHaskell Rust_BLS12_381_G1_CompressedPoint BLS12_381_G1_CompressedPoint where
+  r2h = compress @BLS12_381_G1_Point . r2h . decompress @Rust_BLS12_381_G1_Point
+
+  h2r = compress @Rust_BLS12_381_G1_Point . h2r . decompress @BLS12_381_G1_Point
+
+instance Pairing Rust_BLS12_381_G1_Point Rust_BLS12_381_G2_Point BLS12_381_GT where
+  pairing a b = pairing (r2h a) (r2h b)
+
+
 instance Scale Natural Rust_BLS12_381_G1_Point where
   scale a b = h2r $ scale a (r2h b)
 
@@ -185,8 +182,8 @@ instance AdditiveSemigroup Rust_BLS12_381_G1_Point where
         let !sumf = mkFunSum $ castFunPtr sumPtr
 
         out <- callocForeignPtrBytes @CChar pointSize
-        withForeignPtr (rawData $ pointWeierstrass a) $ \ptr1 -> do
-          withForeignPtr (rawData $ pointWeierstrass b) $ \ptr2 -> do
+        withForeignPtr (rawData $ rawPoint a) $ \ptr1 -> do
+          withForeignPtr (rawData $ rawPoint b) $ \ptr2 -> do
             withForeignPtr out $ \outPtr -> do
               sumf
                 (castPtr ptr1) pointSize
@@ -194,7 +191,7 @@ instance AdditiveSemigroup Rust_BLS12_381_G1_Point where
                 pointSize (castPtr outPtr)
 
         dlclose dl
-        return $ Weierstrass $ RData $ out
+        return $ RPoint $ RData $ out
 
 instance AdditiveMonoid Rust_BLS12_381_G1_Point where
   zero = h2r zero
@@ -217,7 +214,7 @@ instance Scale Fr Rust_BLS12_381_G1_Point where
         let !scalef = mkFunScale $ castFunPtr scalePtr
 
         out <- callocForeignPtrBytes @CChar pointSize
-        withForeignPtr (rawData $ pointWeierstrass point) $ \pointPtr -> do
+        withForeignPtr (rawData $ rawPoint point) $ \pointPtr -> do
           withForeignPtr (rawData $ rawScalar scalar) $ \scalarPtr -> do
             withForeignPtr out $ \outPtr -> do
               scalef
@@ -227,23 +224,23 @@ instance Scale Fr Rust_BLS12_381_G1_Point where
 
         dlclose dl
 
-        return $ Weierstrass $ RData out
+        return $ RPoint $ RData out
 
 instance CyclicGroup Rust_BLS12_381_G1_Point where
   type ScalarFieldOf Rust_BLS12_381_G1_Point = Fr
 
   pointGen = h2r pointGen
 
+instance Eq Rust_BLS12_381_G1_Point where
+  (==) a b = r2h a == r2h b
+
 instance Arbitrary Rust_BLS12_381_G1_Point where
   arbitrary = h2r <$> arbitrary
 
-instance Arbitrary Fr where
-  arbitrary = h2r <$> arbitrary
+instance Show Rust_BLS12_381_G1_Point where
+  show = show . r2h
 
 ------------------------------------ BLS12-381 G2 ------------------------------------
-
-instance {-# OVERLAPPING #-} Show Rust_BLS12_381_G2_Point where
-  show = show . r2h
 
 instance Scale Natural Rust_BLS12_381_G2_Point where
   scale a b = h2r $ scale a (r2h b)
@@ -271,14 +268,18 @@ instance CyclicGroup Rust_BLS12_381_G2_Point where
 
   pointGen = h2r pointGen
 
+instance Eq Rust_BLS12_381_G2_Point where
+  (==) a b = r2h a == r2h b
+
 instance Arbitrary Rust_BLS12_381_G2_Point where
   arbitrary = h2r <$> arbitrary
+
+instance Show Rust_BLS12_381_G2_Point where
+  show = show . r2h
 
 -- PolyVec
 
 instance UnivariateRingPolyVec Fr (RustPolyVec Fr) where
-
-  type C (RustPolyVec Fr) = Fr
 
   (.*.) :: forall size . (KnownNat size) => RustPolyVec Fr size -> RustPolyVec Fr size -> RustPolyVec Fr size
   l .*. r = unsafePerformIO runHMul
@@ -368,7 +369,7 @@ instance UnivariateRingPolyVec Fr (RustPolyVec Fr) where
   vec2poly :: forall poly size . (KnownNat size, UnivariateRingPolynomial Fr poly) => RustPolyVec Fr size -> poly
   vec2poly = toPoly . fromPolyVec
 
-  -- -- p(x) = a0
+  -- p(x) = a0
   polyVecConstant :: forall size . (KnownNat size) => Fr -> RustPolyVec Fr size
   polyVecConstant a0 = h2r $ polyVecConstant (r2h a0)
 
@@ -383,7 +384,7 @@ instance UnivariateRingPolyVec Fr (RustPolyVec Fr) where
   evalPolyVec :: forall size . (KnownNat size) => RustPolyVec Fr size -> Fr -> Fr
   evalPolyVec pv x = h2r $ evalPolyVec (r2h pv) (r2h x)
 
-instance {-# OVERLAPPING #-} UnivariateFieldPolyVec Fr (RustPolyVec Fr) where
+instance UnivariateFieldPolyVec Fr (RustPolyVec Fr) where
 
   (./.) :: forall size . (KnownNat size) => RustPolyVec Fr size -> RustPolyVec Fr size -> RustPolyVec Fr size
   l ./. r = h2r $ ((./.) (r2h l) (r2h r) :: PolyVec EC.Fr size)
@@ -489,9 +490,6 @@ instance (KnownNat size) => Ring (RustPolyVec Fr size)
 instance (KnownNat size) => Arbitrary (RustPolyVec Fr size) where
     arbitrary = h2r <$> arbitrary
 
-instance (KnownNat size) => Show (RustPolyVec Fr size) where
-  show a = show $ r2h a
-
 -- TODO: avoid unnecessary casting from Vector to Ptr
 instance
   ( KnownNat size
@@ -522,4 +520,4 @@ instance
             free pointPtr
             dlclose dl
 
-            return $ Weierstrass $ RData out
+            return $ RPoint $ RData out

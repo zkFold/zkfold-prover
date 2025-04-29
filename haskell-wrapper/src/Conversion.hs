@@ -4,25 +4,25 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Conversion where
 
-import           Class
 import           Control.Monad
 import           Data.Binary
 import           Data.Bits
-import qualified Data.ByteString                             as BS
+import qualified Data.ByteString                        as BS
 import           Foreign
 import           GHC.Base
-import           GHC.IO                                      (unsafePerformIO)
-import           GHC.Num.Integer                             (integerToInt#)
-import           GHC.Num.Natural                             (naturalFromAddr, naturalToAddr)
-import           GHC.Ptr                                     (Ptr (..))
-import           Prelude                                     hiding (Eq, Num (..), sum, (/), (^))
+import           GHC.IO                                 (unsafePerformIO)
+import           GHC.Num.Integer                        (integerToInt#)
+import           GHC.Num.Natural                        (naturalFromAddr, naturalToAddr)
+import           GHC.Ptr                                (Ptr (..))
+import           Prelude                                hiding (Eq, Num (..), sum, (/), (^))
+import           Types
 
-import           ZkFold.Base.Algebra.Basic.Class             hiding (sum)
-import           ZkFold.Base.Algebra.Basic.Field
-import           ZkFold.Base.Algebra.Basic.Number
-import qualified ZkFold.Base.Algebra.EllipticCurve.BLS12_381 as EC
-import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 hiding (Fq, Fr)
-import           ZkFold.Base.Algebra.EllipticCurve.Class
+import           ZkFold.Algebra.Class                   hiding (sum)
+import qualified ZkFold.Algebra.EllipticCurve.BLS12_381 as EC
+import           ZkFold.Algebra.EllipticCurve.BLS12_381 hiding (Fq, Fr)
+import           ZkFold.Algebra.EllipticCurve.Class
+import           ZkFold.Algebra.Field
+import           ZkFold.Algebra.Number
 
 class RustHaskell r h | r -> h where
   h2r :: h -> r
@@ -57,7 +57,7 @@ instance Storable EC.Fr where
   poke = pokeZpLE
 
 instance RustHaskell Fr EC.Fr where
-  r2h (Scalar (RData fptr)) = unsafePerformIO $
+  r2h (RScalar (RData fptr)) = unsafePerformIO $
     withForeignPtr fptr $ \ptr -> do
     peek (castPtr $ ptr)
 
@@ -65,7 +65,7 @@ instance RustHaskell Fr EC.Fr where
     fptr <- callocForeignPtrBytes (sizeOf (undefined :: EC.Fr))
     withForeignPtr fptr $ \ptr -> do
       poke (castPtr ptr) p
-    return $ Scalar $ RData fptr
+    return $ RScalar $ RData fptr
 
 -- Fq
 
@@ -110,7 +110,7 @@ instance Storable BLS12_381_G1_Point where
     poke (castPtr ptr `plusPtr` sizeOf @EC.Fq undefined) y
 
 instance RustHaskell Rust_BLS12_381_G1_Point BLS12_381_G1_Point where
-  r2h (Weierstrass (RData fptr)) =  unsafePerformIO $
+  r2h (RPoint (RData fptr)) =  unsafePerformIO $
     withForeignPtr fptr $ \ptr -> do
     peek (castPtr $ ptr)
 
@@ -118,7 +118,7 @@ instance RustHaskell Rust_BLS12_381_G1_Point BLS12_381_G1_Point where
     fptr <- callocForeignPtrBytes (sizeOf (undefined :: BLS12_381_G1_Point))
     withForeignPtr fptr $ \ptr -> do
       poke (castPtr ptr) p
-    return $ Weierstrass $ RData fptr
+    return $ RPoint $ RData fptr
 
 -- G2
 
@@ -144,7 +144,7 @@ instance Storable BLS12_381_G2_Point where
         )
 
 instance RustHaskell Rust_BLS12_381_G2_Point BLS12_381_G2_Point where
-  r2h (Weierstrass (RData fptr)) = unsafePerformIO $
+  r2h (RPoint (RData fptr)) = unsafePerformIO $
     withForeignPtr fptr $ \ptr -> do
     peek (castPtr $ ptr)
 
@@ -152,7 +152,7 @@ instance RustHaskell Rust_BLS12_381_G2_Point BLS12_381_G2_Point where
     fptr <- callocForeignPtrBytes (sizeOf (undefined :: BLS12_381_G2_Point))
     withForeignPtr fptr $ \ptr -> do
       poke (castPtr ptr) p
-    return $ Weierstrass $ RData fptr
+    return $ RPoint $ RData fptr
 
 -- Zp
 
