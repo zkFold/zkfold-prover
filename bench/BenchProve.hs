@@ -1,31 +1,48 @@
 module Main where
 
-import qualified Data.ByteString                             as BS
-import           Prelude                                     hiding (Num (..), length, sum, take, (-))
-import           RustFunctions                               (RustCore)
-import           Test.QuickCheck                             (Arbitrary (arbitrary), generate)
+import qualified Data.ByteString                        as BS
+import           Poly
+import           Prelude
+import           RustBLS                                ()
+import           Test.QuickCheck                        (Arbitrary (arbitrary), generate)
 import           Test.Tasty.Bench
+import           Types
 
-import           ZkFold.Base.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1, BLS12_381_G2)
-import           ZkFold.Base.Protocol.ARK.Plonk              (Plonk)
-import           ZkFold.Base.Protocol.NonInteractiveProof
+import           ZkFold.Algebra.EllipticCurve.BLS12_381 (BLS12_381_G1_Point, BLS12_381_G2_Point)
+import           ZkFold.Algebra.EllipticCurve.Class     (CyclicGroup (..))
+import           ZkFold.Algebra.Polynomial.Univariate   (PolyVec)
+import           ZkFold.Data.Vector                     (Vector (..))
+import           ZkFold.Protocol.NonInteractiveProof
+import           ZkFold.Protocol.Plonkup
 
-type PlonkSizeBS = 128
-type PlonkBS n = Plonk PlonkSizeBS n BLS12_381_G1 BLS12_381_G2 BS.ByteString
+type RustPlonkBS n = Plonkup (Vector 1) 32 (Vector n)
+    Rust_BLS12_381_G1_Point
+    Rust_BLS12_381_G2_Point
+    BS.ByteString
+    (RustPolyVec (ScalarFieldOf Rust_BLS12_381_G1_Point))
+
+type HaskellPlonkBS n = Plonkup (Vector 1) 32 (Vector n)
+    BLS12_381_G1_Point
+    BLS12_381_G2_Point
+    BS.ByteString
+    (PolyVec (ScalarFieldOf BLS12_381_G1_Point))
 
 main :: IO ()
 main = do
-    (TestData a w) <- generate arbitrary :: IO (NonInteractiveProofTestData (PlonkBS 2) HaskellCore)
+  a  <- generate arbitrary :: IO (HaskellPlonkBS 2)
+  a' <- generate arbitrary :: IO (RustPlonkBS 2)
+  w  <- generate arbitrary :: IO (Witness (HaskellPlonkBS 2))
+  w' <- generate arbitrary :: IO (Witness (RustPlonkBS 2))
 
-    let spHaskell = setupProve @(PlonkBS 2) @HaskellCore a
-        spRust    = setupProve @(PlonkBS 2) @RustCore    a
+  let spHaskell = setupProve @(HaskellPlonkBS 2) a
+      spRust    = setupProve @(RustPlonkBS 2) a'
 
-    defaultMain
-        [
-            bgroup "Prove group"
+  defaultMain
+    [
+      bgroup "Prove group"
 
-            [ bench "Haskell core" $ nf (show . uncurry (prove @(PlonkBS 2) @HaskellCore)) (spHaskell, w)
-            , bcompare "Haskell core" $
-                bench "Rust core" $ nf (show . uncurry (prove @(PlonkBS 2) @RustCore)) (spRust, w)
-            ]
-        ]
+      [ bench "Haskell" $ nf (show . uncurry (prove @(HaskellPlonkBS 2))) (spHaskell, w)
+      , bcompare "Haskell" $
+          bench "Rust" $ nf (show . uncurry (prove @(RustPlonkBS 2))) (spRust, w')
+      ]
+    ]

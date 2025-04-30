@@ -1,3 +1,5 @@
-pub mod fft;
-pub mod msm;
+pub mod point;
+pub mod poly;
+pub mod scalar;
+pub mod scale;
 mod utils;

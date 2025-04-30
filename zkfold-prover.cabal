@@ -1,5 +1,5 @@
 cabal-version:      3.0
-name:               haskell-wrapper
+name:               zkfold-prover
 version:            0.1.0.0
 license:            BSD-3-Clause
 license-file:       LICENSE
@@ -7,7 +7,6 @@ author:             ZkFold
 maintainer:         info@zkfold.io
 category:           Network
 build-type:         Custom
-extra-doc-files:    CHANGELOG.md
 
 custom-setup
   setup-depends:       
@@ -15,6 +14,7 @@ custom-setup
     , Cabal
     , process
     , directory
+    , pseudomacros
 
 Flag Pedantic
     Description: Enable pedantic build with -Werror
@@ -82,50 +82,58 @@ library
   import: options
   exposed-modules:
       RustFunctions
+    , RustBLS
+    , Conversion
+    , Types
+    , Poly
   hs-source-dirs:
       haskell-wrapper/src
   build-depends:
     , base >= 4.16
     , bytestring
-    , zkfold-base
+    , symbolic-base
     , vector
     , binary
     , unix
+    , deepseq
+    , QuickCheck
   ghc-options:
     -O2
 
-test-suite wrapper-test
-  import: options
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  hs-source-dirs: haskell-wrapper/tests
-  other-modules: 
-    MultiScalarMultiplication  
-    FFT
-  build-depends:
-    , base >= 4.16
-    , zkfold-base
-    , haskell-wrapper
-    , hspec                                < 2.12
-    , QuickCheck
-    , vector
+-- test-suite wrapper-test
+--   import: options
+--   main-is: Main.hs
+--   type: exitcode-stdio-1.0
+--   hs-source-dirs: haskell-wrapper/tests
+  -- other-modules: 
+    -- MultiScalarMultiplication  
+    -- FFT
+  -- build-depends:
+  --   , base >= 4.16
+  --   , symbolic-base
+  --   , zkfold-prover
+  --   , hspec                                < 2.12
+  --   , QuickCheck
+  --   , vector
+  --   , vector-algorithms
+  --   , bytestring
 
-benchmark msm
-    import:           options
-    main-is:          BenchMSM.hs
-    hs-source-dirs:   bench
-    type:             exitcode-stdio-1.0
-    ghc-options:      
-      -rtsopts
-      -fprof-auto
-    build-depends: 
-      base, 
-      tasty-bench,
-      QuickCheck,
-      vector,
-      zkfold-base,
-      bytestring,
-      haskell-wrapper
+-- benchmark msm
+--     import:           options
+--     main-is:          BenchMSM.hs
+--     hs-source-dirs:   bench
+--     type:             exitcode-stdio-1.0
+--     ghc-options:      
+--       -rtsopts
+--       -fprof-auto
+--     build-depends: 
+--       base, 
+--       tasty-bench,
+--       QuickCheck,
+--       vector,
+--       symbolic-base,
+--       bytestring,
+--       zkfold-prover
 
 benchmark prove
     import:           options
@@ -140,25 +148,49 @@ benchmark prove
       tasty-bench,
       QuickCheck,
       vector,
-      zkfold-base,
+      symbolic-base,
       bytestring,
-      haskell-wrapper
+      zkfold-prover,
+      adjunctions,
+      binary
 
-benchmark poly-mul
-    import:           options
-    main-is:          BenchPolyMul.hs
-    hs-source-dirs:   bench
-    type:             exitcode-stdio-1.0
-    ghc-options:      
-      -rtsopts
-      -fprof-auto
-    build-depends: 
-      base, 
-      tasty-bench,
-      QuickCheck,
-      vector,
-      zkfold-base,
-      bytestring,
-      haskell-wrapper,
-      random,
-      deepseq
+-- benchmark poly-mul
+--     import:           options
+--     main-is:          BenchPolyMul.hs
+--     hs-source-dirs:   bench
+--     type:             exitcode-stdio-1.0
+--     ghc-options:      
+--       -rtsopts
+--       -fprof-auto
+--     build-depends: 
+--       base, 
+--       tasty-bench,
+--       QuickCheck,
+--       vector,
+--       symbolic-base,
+--       bytestring,
+--       zkfold-prover,
+--       random,
+--       deepseq,
+--       adjunctions,
+--       binary
+
+-- benchmark poly-div
+--     import:           options
+--     main-is:          BenchPolyDiv.hs
+--     hs-source-dirs:   bench
+--     type:             exitcode-stdio-1.0
+--     ghc-options:      
+--       -rtsopts
+--       -fprof-auto
+--     build-depends: 
+--       base, 
+--       tasty-bench,
+--       QuickCheck,
+--       vector,
+--       symbolic-base,
+--       bytestring,
+--       zkfold-prover,
+--       random,
+--       deepseq,
+--       extra

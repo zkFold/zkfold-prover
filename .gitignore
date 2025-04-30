@@ -23,6 +23,8 @@ cabal.project.local~
 .ghc.environment.*
 rust-wrapper/target/
 rust-wrapper/Cargo.lock
-lib.so
+*.so
 *.data
 *.svg
+*.nix
+*.rlib
