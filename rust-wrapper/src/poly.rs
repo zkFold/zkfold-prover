@@ -33,30 +33,26 @@ pub fn div_fft(l: &[u8], r: &[u8]) -> Vec<u8> {
 pub fn hmul(l: &[u8], r: &[u8]) -> Vec<u8> {
     let l = deserialize_vector_scalar_field(l);
     let r = deserialize_vector_scalar_field(r);
-    
-    l.iter().zip(r).map(|(x, y)| {
-        *x * y
-    })
-    .flat_map(unpack_scalar)
-    .collect()
+
+    l.iter()
+        .zip(r)
+        .map(|(x, y)| *x * y)
+        .flat_map(unpack_scalar)
+        .collect()
 }
 
 pub fn scalar_mul(l: &[u8], r: &[u8]) -> Vec<u8> {
     let a = pack_scalar(l).unwrap();
     let pv = deserialize_vector_scalar_field(r);
 
-    pv.iter().map(|x| *x*a)
-        .flat_map(unpack_scalar)
-        .collect()  
+    pv.iter().map(|x| *x * a).flat_map(unpack_scalar).collect()
 }
 
 pub fn scalar_add(l: &[u8], r: &[u8]) -> Vec<u8> {
     let a = pack_scalar(l).unwrap();
     let pv = deserialize_vector_scalar_field(r);
 
-    pv.iter().map(|x| *x+a)
-        .flat_map(unpack_scalar)
-        .collect()  
+    pv.iter().map(|x| *x + a).flat_map(unpack_scalar).collect()
 }
 
 ///
@@ -100,7 +96,6 @@ pub unsafe extern "C" fn rust_wrapper_scalar_mul(
 
     std::ptr::copy(res.as_ptr(), out as *mut u8, res.len());
 }
-
 
 ///
 /// # Safety

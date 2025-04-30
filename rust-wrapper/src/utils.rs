@@ -19,18 +19,16 @@ pub fn deserialize_vector<T>(
 }
 
 pub fn deserialize_vector_scalar_field(buffer: &[u8]) -> Vec<ScalarField> {
-    deserialize_vector(buffer, std::mem::size_of::<ScalarField>(), pack_scalar)
-    .0
+    deserialize_vector(buffer, std::mem::size_of::<ScalarField>(), pack_scalar).0
 }
 
 pub fn deserialize_vector_points(buffer: &[u8]) -> Vec<GAffine> {
-    deserialize_vector(buffer, GAffine::identity().uncompressed_size(), pack_point)
-    .0
+    deserialize_vector(buffer, GAffine::identity().uncompressed_size(), pack_point).0
 }
 
 pub fn fix_point_vector(vector: &mut [u8]) {
     let len = vector.len();
-    vector[0.. len >> 1].reverse();
+    vector[0..len >> 1].reverse();
     vector[(len >> 1)..len].reverse();
 }
 

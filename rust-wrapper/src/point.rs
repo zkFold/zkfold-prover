@@ -5,7 +5,6 @@ use ark_ec::CurveGroup;
 
 use crate::utils::{pack_point, unpack_point};
 
-
 pub fn sum(point1_buffer: &[u8], point2_buffer: &[u8]) -> Vec<u8> {
     let p1 = pack_point(point1_buffer).unwrap();
     let p2 = pack_point(point2_buffer).unwrap();

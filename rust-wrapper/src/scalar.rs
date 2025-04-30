@@ -2,7 +2,6 @@ use std::slice;
 
 use crate::utils::{pack_scalar, unpack_scalar};
 
-
 pub fn mul(s1_buffer: &[u8], s2_buffer: &[u8]) -> Vec<u8> {
     let s1 = pack_scalar(s1_buffer).unwrap();
     let s2 = pack_scalar(s2_buffer).unwrap();

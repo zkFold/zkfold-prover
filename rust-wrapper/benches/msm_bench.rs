@@ -30,10 +30,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
         group.bench_with_input(BenchmarkId::new("ArkMSM", size), &size, |b, _size| {
             b.iter(|| {
-                msm(
-                    &scalars_bytes_vec,
-                    &points_bytes_vec,
-                );
+                msm(&scalars_bytes_vec, &points_bytes_vec);
             })
         });
     }
