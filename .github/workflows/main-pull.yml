@@ -91,7 +91,7 @@ jobs:
 
     # - name: Prepare package for publishing
     #   run: cabal sdist all
-  stylish-haskell-job:
+  haskell-rust-lint:
     strategy:
       matrix:
         os: [ubuntu-latest]
