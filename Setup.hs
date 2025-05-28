@@ -22,6 +22,8 @@ buildRustLib _ flags = do
 
     let file = $__FILE__
     let pathToDistNewstyle = take (fromJust $ findIndex (isPrefixOf "dist-newstyle") (tails file)) file
+    putStrLn $ "Path to Setup.hs file: " ++ file
+    putStrLn $ "Path to dist-newstyle dir: " ++ pathToDistNewstyle
 
     isNotDependency <- doesFileExist (pathToDistNewstyle ++ "rust-wrapper/Cargo.toml")
 
