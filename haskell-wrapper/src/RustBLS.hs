@@ -10,6 +10,7 @@ module RustBLS where
 
 import           Control.Monad
 import           Conversion
+import qualified Data.Bool
 import qualified Data.Vector                            as V
 import           Foreign
 import           Foreign.C.Types
@@ -29,9 +30,10 @@ import           ZkFold.Algebra.EllipticCurve.BLS12_381 hiding (Fq, Fr)
 import           ZkFold.Algebra.EllipticCurve.Class
 import           ZkFold.Algebra.Number
 import           ZkFold.Algebra.Polynomial.Univariate
+import           ZkFold.Control.Conditional
 import           ZkFold.Data.ByteString
+import qualified ZkFold.Data.Eq
 import           ZkFold.Symbolic.MonadCircuit
-
 pointSize :: Int
 pointSize = sizeOf (undefined :: Rust_BLS12_381_G1_Point)
 
@@ -58,6 +60,19 @@ instance Exponent BLS12_381_GT Fr where
 
 instance Eq Fr where
   (==) a b = (r2h a) == (r2h b)
+
+instance Conditional Bool Fr where  bool = Data.Bool.bool
+
+instance ZkFold.Data.Eq.Eq Fr where
+  type BooleanOf Fr = Bool
+  (==) = (P.==)
+  (/=) = (P./=)
+
+instance P.Enum Fr where
+  succ = h2r . P.succ . r2h
+  pred = h2r . P.pred . r2h
+  toEnum = h2r . P.toEnum
+  fromEnum = P.fromEnum . r2h
 
 instance Ord Fr where
   a <= b = (<=) (r2h a) (r2h b)
