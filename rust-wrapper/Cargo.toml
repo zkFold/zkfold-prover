@@ -24,7 +24,7 @@ ark-test-curves = "0.4.2"
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [lib]
-crate-type = ["lib", "cdylib"]
+crate-type = ["lib", "staticlib"]
 
 [[bench]]
 name = "msm_bench"

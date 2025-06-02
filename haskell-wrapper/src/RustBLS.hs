@@ -1,7 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes  #-}
 {-# LANGUAGE DerivingVia          #-}
 {-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE OverloadedLists      #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -21,7 +20,6 @@ import           Poly
 import           Prelude                                hiding (fromIntegral, negate, (+), (-), (^))
 import qualified Prelude                                as P
 import           RustFunctions
-import           System.Posix.DynamicLinker
 import           Test.QuickCheck                        hiding (scale)
 import           Types
 
@@ -86,20 +84,16 @@ instance MultiplicativeSemigroup Fr where
     where
       runMul :: IO Fr
       runMul = do
-        dl <- dlopen libPath [RTLD_NOW]
-        mulPtr <- dlsym dl "rust_wrapper_mul"
-        let !mulf = mkFunMul $ castFunPtr mulPtr
-
         out <- callocForeignPtrBytes @CChar scalarSize
+
         withForeignPtr (rawData $ rawScalar a) $ \ptr1 -> do
           withForeignPtr (rawData $ rawScalar b) $ \ptr2 -> do
             withForeignPtr out $ \outPtr -> do
-              mulf
+              rsMul
                 (castPtr ptr1) scalarSize
                 (castPtr ptr2) scalarSize
                 scalarSize (castPtr outPtr)
 
-        dlclose dl
         return $ RScalar $ RData $ out
 
 instance MultiplicativeMonoid Fr where
@@ -177,20 +171,16 @@ instance AdditiveSemigroup Rust_BLS12_381_G1_Point where
     where
       runSum :: IO Rust_BLS12_381_G1_Point
       runSum = do
-        dl <- dlopen libPath [RTLD_NOW]
-        sumPtr <- dlsym dl "rust_wrapper_sum"
-        let !sumf = mkFunSum $ castFunPtr sumPtr
-
         out <- callocForeignPtrBytes @CChar pointSize
+
         withForeignPtr (rawData $ rawPoint a) $ \ptr1 -> do
           withForeignPtr (rawData $ rawPoint b) $ \ptr2 -> do
             withForeignPtr out $ \outPtr -> do
-              sumf
+              rsSum
                 (castPtr ptr1) pointSize
                 (castPtr ptr2) pointSize
                 pointSize (castPtr outPtr)
 
-        dlclose dl
         return $ RPoint $ RData $ out
 
 instance AdditiveMonoid Rust_BLS12_381_G1_Point where
@@ -209,20 +199,15 @@ instance Scale Fr Rust_BLS12_381_G1_Point where
     where
       runScale :: IO Rust_BLS12_381_G1_Point
       runScale = do
-        dl <- dlopen libPath [RTLD_NOW]
-        scalePtr <- dlsym dl "rust_wrapper_scale"
-        let !scalef = mkFunScale $ castFunPtr scalePtr
-
         out <- callocForeignPtrBytes @CChar pointSize
+
         withForeignPtr (rawData $ rawPoint point) $ \pointPtr -> do
           withForeignPtr (rawData $ rawScalar scalar) $ \scalarPtr -> do
             withForeignPtr out $ \outPtr -> do
-              scalef
+              rsScale
                 (castPtr pointPtr) pointSize
                 (castPtr scalarPtr) scalarSize
                 pointSize (castPtr outPtr)
-
-        dlclose dl
 
         return $ RPoint $ RData out
 
@@ -286,22 +271,16 @@ instance UnivariateRingPolyVec Fr (RustPolyVec Fr) where
     where
       runHMul :: IO (RustPolyVec Fr size)
       runHMul = do
-        dl <- dlopen libPath [RTLD_NOW]
-        hmulPtr <- dlsym dl "rust_wrapper_hmul"
-        let !hmulf = mkFunHMul $ castFunPtr hmulPtr
-
         let valueSize = (fromInteger $ naturalToInteger $ value @size)
         out <- callocForeignPtrBytes @CChar (scalarSize P.* valueSize)
 
         withForeignPtr (rawData $ rawPoly l) $ \lPtr -> do
           withForeignPtr (rawData $ rawPoly r) $ \rPtr -> do
             withForeignPtr out $ \outPtr -> do
-              hmulf
+              rsHMul
                 (castPtr lPtr) (valueSize P.* scalarSize)
                 (castPtr rPtr) (valueSize P.* scalarSize)
                 (valueSize P.* scalarSize) (castPtr outPtr)
-
-        dlclose dl
 
         return $ RustPV (RData out)
 
@@ -312,22 +291,16 @@ instance UnivariateRingPolyVec Fr (RustPolyVec Fr) where
     where
       runScalarMul :: IO (RustPolyVec Fr size)
       runScalarMul = do
-        dl <- dlopen libPath [RTLD_NOW]
-        scalarMulPtr <- dlsym dl "rust_wrapper_scalar_mul"
-        let !scalarMulf = mkFunScalarMul $ castFunPtr scalarMulPtr
-
         let valueSize = (fromInteger $ naturalToInteger $ value @size)
         out <- callocForeignPtrBytes @CChar (scalarSize P.* valueSize)
 
         withForeignPtr (rawData $ rawScalar a) $ \aPtr -> do
           withForeignPtr (rawData $ rawPoly pv) $ \pvPtr -> do
             withForeignPtr out $ \outPtr -> do
-              scalarMulf
+              rsScalarMul
                 (castPtr aPtr) scalarSize
                 (castPtr pvPtr) (valueSize P.* scalarSize)
                 (valueSize P.* scalarSize) (castPtr outPtr)
-
-        dlclose dl
 
         return $ RustPV (RData out)
 
@@ -338,22 +311,16 @@ instance UnivariateRingPolyVec Fr (RustPolyVec Fr) where
     where
       runScalarAdd :: IO (RustPolyVec Fr size)
       runScalarAdd = do
-        dl <- dlopen libPath [RTLD_NOW]
-        scalarAddPtr <- dlsym dl "rust_wrapper_scalar_add"
-        let !scalarAddf = mkFunScalarAdd $ castFunPtr scalarAddPtr
-
         let valueSize = (fromInteger $ naturalToInteger $ value @size)
         out <- callocForeignPtrBytes @CChar (scalarSize P.* valueSize)
 
         withForeignPtr (rawData $ rawScalar a) $ \aPtr -> do
           withForeignPtr (rawData $ rawPoly pv) $ \pvPtr -> do
             withForeignPtr out $ \outPtr -> do
-              scalarAddf
+              rsScalarAdd
                 (castPtr aPtr) scalarSize
                 (castPtr pvPtr) (valueSize P.* scalarSize)
                 (valueSize P.* scalarSize) (castPtr outPtr)
-
-        dlclose dl
 
         return $ RustPV (RData out)
 
@@ -406,24 +373,18 @@ instance UnivariateFieldPolyVec Fr (RustPolyVec Fr) where
     where
       runFFT :: IO (RustPolyVec Fr size)
       runFFT = do
-          dl <- dlopen libPath [RTLD_NOW]
-          fftPtr <- dlsym dl "rust_wrapper_div_fft"
-          let !fft = mkFunDivFFT $ castFunPtr fftPtr
+        let valueSize = (fromInteger $ naturalToInteger $ value @size)
+        out <- callocForeignPtrBytes @CChar (scalarSize P.* (fromInteger $ naturalToInteger $ value @size))
 
-          let valueSize = (fromInteger $ naturalToInteger $ value @size)
-          out <- callocForeignPtrBytes @CChar (scalarSize P.* (fromInteger $ naturalToInteger $ value @size))
+        withForeignPtr (rawData $ rawPoly l) $ \lPtr -> do
+          withForeignPtr (rawData $ rawPoly r) $ \rPtr -> do
+            withForeignPtr out $ \outPtr -> do
+              rsDivFFT
+                (castPtr lPtr) (valueSize P.* scalarSize)
+                (castPtr rPtr) (valueSize P.* scalarSize)
+                (valueSize P.* scalarSize) (castPtr outPtr)
 
-          withForeignPtr (rawData $ rawPoly l) $ \lPtr -> do
-            withForeignPtr (rawData $ rawPoly r) $ \rPtr -> do
-              withForeignPtr out $ \outPtr -> do
-                fft
-                  (castPtr lPtr) (valueSize P.* scalarSize)
-                  (castPtr rPtr) (valueSize P.* scalarSize)
-                  (valueSize P.* scalarSize) (castPtr outPtr)
-
-          dlclose dl
-
-          return $ RustPV (RData out)
+        return $ RustPV (RData out)
 
   castPolyVec :: forall size size' . (KnownNat size, KnownNat size') => RustPolyVec Fr size -> RustPolyVec Fr size'
   castPolyVec pv = h2r $ castPolyVec (r2h pv)
@@ -460,24 +421,18 @@ instance (KnownNat size) => MultiplicativeSemigroup (RustPolyVec Fr size) where
       where
         runFFT :: IO (RustPolyVec Fr size)
         runFFT = do
-            dl <- dlopen libPath [RTLD_NOW]
-            fftPtr <- dlsym dl "rust_wrapper_mul_fft"
-            let !fft = mkFunDivFFT $ castFunPtr fftPtr
+          let valueSize = (fromInteger $ naturalToInteger $ value @size)
+          out <- callocForeignPtrBytes @CChar (scalarSize P.* (fromInteger $ naturalToInteger $ value @size))
 
-            let valueSize = (fromInteger $ naturalToInteger $ value @size)
-            out <- callocForeignPtrBytes @CChar (scalarSize P.* (fromInteger $ naturalToInteger $ value @size))
+          withForeignPtr (rawData $ rawPoly l) $ \lPtr -> do
+            withForeignPtr (rawData $ rawPoly r) $ \rPtr -> do
+              withForeignPtr out $ \outPtr -> do
+                rsMulFFT
+                  (castPtr lPtr) (valueSize P.* scalarSize)
+                  (castPtr rPtr) (valueSize P.* scalarSize)
+                  (valueSize P.* scalarSize) (castPtr outPtr)
 
-            withForeignPtr (rawData $ rawPoly l) $ \lPtr -> do
-              withForeignPtr (rawData $ rawPoly r) $ \rPtr -> do
-                withForeignPtr out $ \outPtr -> do
-                  fft
-                    (castPtr lPtr) (valueSize P.* scalarSize)
-                    (castPtr rPtr) (valueSize P.* scalarSize)
-                    (valueSize P.* scalarSize) (castPtr outPtr)
-
-            dlclose dl
-
-            return $ RustPV (RData out)
+          return $ RustPV (RData out)
 
 
 instance (KnownNat size) => MultiplicativeMonoid (RustPolyVec Fr size) where
@@ -500,24 +455,19 @@ instance
       where
         runMSM :: IO Rust_BLS12_381_G1_Point
         runMSM = do
-            dl <- dlopen libPath [RTLD_NOW]
-            msmPtr <- dlsym dl "rust_wrapper_msm"
-            let !msmf = mkFunMSM $ castFunPtr msmPtr
-            let valueSize = min (fromInteger $ naturalToInteger $ value @size) (V.length points)
+          let valueSize = min (fromInteger $ naturalToInteger $ value @size) (V.length points)
+          out <- callocForeignPtrBytes @CChar pointSize
 
-            out <- callocForeignPtrBytes @CChar pointSize
+          pointPtr <- callocBytes @BLS12_381_G1_Point (valueSize P.* pointSize)
+          pokeArray pointPtr (V.toList (r2h <$> points))
 
-            pointPtr <- callocBytes @BLS12_381_G1_Point (valueSize P.* pointSize)
-            pokeArray pointPtr (V.toList (r2h <$> points))
+          withForeignPtr (rawData $ rawPoly scalars) $ \scalarPtr -> do
+            withForeignPtr out $ \outPtr -> do
+              rsMSM
+                (castPtr pointPtr) (valueSize P.* pointSize)
+                (castPtr scalarPtr) (valueSize P.* scalarSize)
+                pointSize (castPtr outPtr)
 
-            withForeignPtr (rawData $ rawPoly scalars) $ \scalarPtr -> do
-              withForeignPtr out $ \outPtr -> do
-                msmf
-                  (castPtr pointPtr) (valueSize P.* pointSize)
-                  (castPtr scalarPtr) (valueSize P.* scalarSize)
-                  pointSize (castPtr outPtr)
+          free pointPtr
 
-            free pointPtr
-            dlclose dl
-
-            return $ RPoint $ RData out
+          return $ RPoint $ RData out

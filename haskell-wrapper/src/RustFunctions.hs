@@ -8,56 +8,56 @@ import           Foreign
 import           Foreign.C.String
 import           Prelude
 
+type FunScalarAdd =
+    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
+
+foreign import ccall unsafe
+    "rust_wrapper_scalar_add" rsScalarAdd :: FunScalarAdd
+
 type FunMulFFT =
     CString -> Int -> CString -> Int -> Int -> CString -> IO ()
 
-foreign import ccall "dynamic"
-    mkFunMulFFT :: FunPtr FunMulFFT -> FunMulFFT
+foreign import ccall unsafe
+    "rust_wrapper_mul_fft" rsMulFFT :: FunMulFFT
 
 type FunDivFFT =
     CString -> Int -> CString -> Int -> Int -> CString -> IO ()
 
-foreign import ccall "dynamic"
-    mkFunDivFFT :: FunPtr FunDivFFT -> FunDivFFT
+foreign import ccall unsafe
+    "rust_wrapper_div_fft" rsDivFFT :: FunDivFFT
 
 type FunMSM =
     CString -> Int -> CString -> Int -> Int -> CString -> IO ()
 
-foreign import ccall "dynamic"
-    mkFunMSM :: FunPtr FunMSM -> FunMSM
+foreign import ccall unsafe
+    "rust_wrapper_msm" rsMSM :: FunMSM
 
 type FunScale =
     CString -> Int -> CString -> Int -> Int -> CString -> IO ()
 
-foreign import ccall "dynamic"
-    mkFunScale :: FunPtr FunScale -> FunScale
+foreign import ccall unsafe
+    "rust_wrapper_scale" rsScale :: FunScale
 
 type FunSum =
     CString -> Int -> CString -> Int -> Int -> CString -> IO ()
 
-foreign import ccall "dynamic"
-    mkFunSum :: FunPtr FunSum -> FunSum
+foreign import ccall unsafe
+    "rust_wrapper_sum" rsSum :: FunSum
 
 type FunMul =
     CString -> Int -> CString -> Int -> Int -> CString -> IO ()
 
-foreign import ccall "dynamic"
-    mkFunMul :: FunPtr FunMul -> FunMul
+foreign import ccall unsafe
+    "rust_wrapper_mul" rsMul :: FunMul
 
 type FunHMul =
     CString -> Int -> CString -> Int -> Int -> CString -> IO ()
 
-foreign import ccall "dynamic"
-    mkFunHMul :: FunPtr FunHMul -> FunHMul
+foreign import ccall unsafe
+    "rust_wrapper_hmul" rsHMul :: FunHMul
 
 type FunScalarMul =
     CString -> Int -> CString -> Int -> Int -> CString -> IO ()
 
-foreign import ccall "dynamic"
-    mkFunScalarMul :: FunPtr FunScalarMul -> FunScalarMul
-
-type FunScalarAdd =
-    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
-
-foreign import ccall "dynamic"
-    mkFunScalarAdd :: FunPtr FunScalarAdd -> FunScalarAdd
+foreign import ccall unsafe
+    "rust_wrapper_scalar_mul" rsScalarMul :: FunScalarMul
