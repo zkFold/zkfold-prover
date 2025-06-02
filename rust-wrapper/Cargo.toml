@@ -28,14 +28,17 @@ crate-type = ["lib", "staticlib"]
 
 [[bench]]
 name = "msm_bench"
+path = "benches/msm_bench.rs"
 harness = false
 
 [[bench]]
 name = "div_fft_bench"
+path = "benches/div_fft_bench.rs"
 harness = false
 
 [[bench]]
 name = "mul_fft_bench"
+path = "benches/mul_fft_bench.rs"
 harness = false
 
 [features]
