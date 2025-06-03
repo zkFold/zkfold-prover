@@ -1,7 +1,44 @@
 use ark_bls12_381::{Fr as ScalarField, G1Affine as GAffine};
 use ark_ff::PrimeField;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, SerializationError};
+use cfg_if::cfg_if;
 use num_bigint::BigUint;
+
+// c_char platform-specific type alias
+// Was taken from
+// https://docs.rs/libc/0.2.172/src/libc/primitives.rs.html#20
+cfg_if! {
+    if #[cfg(all(
+        not(windows),
+        not(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "watchos",
+            target_os = "visionos",
+        )),
+        not(target_os = "vita"),
+        any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "csky",
+            target_arch = "hexagon",
+            target_arch = "msp430",
+            target_arch = "powerpc",
+            target_arch = "powerpc64",
+            target_arch = "riscv32",
+            target_arch = "riscv64",
+            target_arch = "s390x",
+            target_arch = "xtensa",
+        )
+    ))] {
+        #[allow(non_camel_case_types)]
+        pub type c_char = u8;
+    } else {
+        #[allow(non_camel_case_types)]
+        pub type c_char = i8;
+    }
+}
 
 pub struct Buffer<T>(pub Vec<T>);
 
