@@ -10,8 +10,6 @@ import           GHC.Generics
 import           Prelude
 
 import           ZkFold.Control.Conditional
-libPath :: FilePath
-libPath = "libs/librust_wrapper.so"
 
 callocForeignPtrBytes :: Int -> IO (ForeignPtr a)
 callocForeignPtrBytes n = do { p <- callocBytes n; newForeignPtr finalizerFree p }

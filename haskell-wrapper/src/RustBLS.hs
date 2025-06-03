@@ -147,6 +147,10 @@ instance Show Fr where
 
 ------------------------------------ BLS12-381-G1 --------------------------------------
 
+instance Binary Rust_BLS12_381_G1_Point where
+  put = put . r2h
+  get = h2r <$> get
+
 instance EllipticCurve Rust_BLS12_381_G1_Point where
   type CurveOf Rust_BLS12_381_G1_Point = "Rust BLS12-381-G1"
   type BaseFieldOf Rust_BLS12_381_G1_Point = EC.Fq
@@ -278,6 +282,9 @@ instance Show Rust_BLS12_381_G2_Point where
   show = show . r2h
 
 -- PolyVec
+
+instance forall size . (KnownNat size) => Show (RustPolyVec Fr size) where
+  show = show . r2h
 
 instance UnivariateRingPolyVec Fr (RustPolyVec Fr) where
 
@@ -448,7 +455,6 @@ instance (KnownNat size) => MultiplicativeSemigroup (RustPolyVec Fr size) where
                   (valueSize P.* scalarSize) (castPtr outPtr)
 
           return $ RustPV (RData out)
-
 
 instance (KnownNat size) => MultiplicativeMonoid (RustPolyVec Fr size) where
     one = h2r one
