@@ -7,57 +7,52 @@ module RustFunctions where
 import           Foreign
 import           Foreign.C.String
 import           Prelude
+import           Types
 
-type FunScalarAdd =
-    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
+runRustFunctionBinary ::
+    RustFunctionBinary
+    -> (RustData, Int)
+    -> (RustData, Int)
+    -> (ForeignPtr a, Int)
+    -> IO ()
+runRustFunctionBinary f (a, aSize) (b, bSize) (out, outSize) = do
+    withForeignPtr (rawData a) $ \ptr1 -> do
+        withForeignPtr (rawData b) $ \ptr2 -> do
+            withForeignPtr out $ \outPtr -> do
+                f
+                    (castPtr ptr1) aSize
+                    (castPtr ptr2) bSize
+                    outSize (castPtr outPtr)
 
-foreign import ccall unsafe
-    "rust_wrapper_scalar_add" rsScalarAdd :: FunScalarAdd
-
-type FunMulFFT =
-    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
-
-foreign import ccall unsafe
-    "rust_wrapper_mul_fft" rsMulFFT :: FunMulFFT
-
-type FunDivFFT =
-    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
-
-foreign import ccall unsafe
-    "rust_wrapper_div_fft" rsDivFFT :: FunDivFFT
-
-type FunMSM =
-    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
-
-foreign import ccall unsafe
-    "rust_wrapper_msm" rsMSM :: FunMSM
-
-type FunScale =
-    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
+type RustFunctionBinary
+    =  CString -> Int   -- first argument
+    -> CString -> Int   -- second argument
+    -> Int -> CString   -- output
+    -> IO ()
 
 foreign import ccall unsafe
-    "rust_wrapper_scale" rsScale :: FunScale
-
-type FunSum =
-    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
+    "rust_wrapper_scalar_add" rsScalarAdd :: RustFunctionBinary
 
 foreign import ccall unsafe
-    "rust_wrapper_sum" rsSum :: FunSum
-
-type FunMul =
-    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
+    "rust_wrapper_mul_fft" rsMulFFT :: RustFunctionBinary
 
 foreign import ccall unsafe
-    "rust_wrapper_mul" rsMul :: FunMul
-
-type FunHMul =
-    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
+    "rust_wrapper_div_fft" rsDivFFT :: RustFunctionBinary
 
 foreign import ccall unsafe
-    "rust_wrapper_hmul" rsHMul :: FunHMul
-
-type FunScalarMul =
-    CString -> Int -> CString -> Int -> Int -> CString -> IO ()
+    "rust_wrapper_msm" rsMSM :: RustFunctionBinary
 
 foreign import ccall unsafe
-    "rust_wrapper_scalar_mul" rsScalarMul :: FunScalarMul
+    "rust_wrapper_scale" rsScale :: RustFunctionBinary
+
+foreign import ccall unsafe
+    "rust_wrapper_sum" rsSum :: RustFunctionBinary
+
+foreign import ccall unsafe
+    "rust_wrapper_mul" rsMul :: RustFunctionBinary
+
+foreign import ccall unsafe
+    "rust_wrapper_hmul" rsHMul :: RustFunctionBinary
+
+foreign import ccall unsafe
+    "rust_wrapper_scalar_mul" rsScalarMul :: RustFunctionBinary
