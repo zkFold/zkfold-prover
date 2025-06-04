@@ -13,9 +13,8 @@ import           GHC.IO                               (unsafePerformIO)
 import           Prelude                              hiding (drop, length, product, replicate, sum, take, (/), (^))
 import           Types
 
-import           ZkFold.Algebra.Class                 (Ring)
 import           ZkFold.Algebra.Number                (KnownNat, Natural, value)
-import           ZkFold.Algebra.Polynomial.Univariate (PolyVec, fromPolyVec, toPolyVec)
+import           ZkFold.Algebra.Polynomial.Univariate (PolyVec, UnivariateRingPolyVec (..))
 
 newtype RustPolyVec a (size :: Natural) = RustPV { rawPoly :: RustData }
     deriving (Generic)
@@ -25,7 +24,7 @@ instance NFData (RustPolyVec a size) where
 
 instance
     ( Storable h
-    , Ring h
+    , UnivariateRingPolyVec h (PolyVec h)
     , RustHaskell r h
     , KnownNat size
     ) => RustHaskell (RustPolyVec r size) (PolyVec h size) where

@@ -1,6 +1,7 @@
 module Main where
 
 import qualified Data.ByteString                        as BS
+import           GHC.Generics                           (Par1 (..))
 import           Poly
 import           Prelude
 import           RustBLS                                ()
@@ -15,13 +16,13 @@ import           ZkFold.Data.Vector                     (Vector (..))
 import           ZkFold.Protocol.NonInteractiveProof
 import           ZkFold.Protocol.Plonkup
 
-type RustPlonkBS n = Plonkup (Vector 1) 32 (Vector n)
+type RustPlonkBS = Plonkup (Vector 2) Par1 32
     Rust_BLS12_381_G1_Point
     Rust_BLS12_381_G2_Point
     BS.ByteString
     (RustPolyVec (ScalarFieldOf Rust_BLS12_381_G1_Point))
 
-type HaskellPlonkBS n = Plonkup (Vector 1) 32 (Vector n)
+type HaskellPlonkBS = Plonkup (Vector 2) Par1 32
     BLS12_381_G1_Point
     BLS12_381_G2_Point
     BS.ByteString
@@ -29,20 +30,20 @@ type HaskellPlonkBS n = Plonkup (Vector 1) 32 (Vector n)
 
 main :: IO ()
 main = do
-  a  <- generate arbitrary :: IO (HaskellPlonkBS 2)
-  a' <- generate arbitrary :: IO (RustPlonkBS 2)
-  w  <- generate arbitrary :: IO (Witness (HaskellPlonkBS 2))
-  w' <- generate arbitrary :: IO (Witness (RustPlonkBS 2))
+  a  <- generate arbitrary :: IO HaskellPlonkBS
+  a' <- generate arbitrary :: IO RustPlonkBS
+  w  <- generate arbitrary :: IO (Witness HaskellPlonkBS)
+  w' <- generate arbitrary :: IO (Witness RustPlonkBS)
 
-  let spHaskell = setupProve @(HaskellPlonkBS 2) a
-      spRust    = setupProve @(RustPlonkBS 2) a'
+  let spHaskell = setupProve @HaskellPlonkBS a
+      spRust    = setupProve @RustPlonkBS a'
 
   defaultMain
     [
       bgroup "Prove group"
 
-      [ bench "Haskell" $ nf (show . uncurry (prove @(HaskellPlonkBS 2))) (spHaskell, w)
+      [ bench "Haskell" $ nf (show . uncurry (prove @HaskellPlonkBS)) (spHaskell, w)
       , bcompare "Haskell" $
-          bench "Rust" $ nf (show . uncurry (prove @(RustPlonkBS 2))) (spRust, w')
+          bench "Rust" $ nf (show . uncurry (prove @RustPlonkBS)) (spRust, w')
       ]
     ]

@@ -1,12 +1,10 @@
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::DenseUVPolynomial;
 use core::slice;
-use libc;
 use std::ops::Div;
 use std::ops::Mul;
 
-use crate::utils::pack_scalar;
-use crate::utils::{deserialize_vector_scalar_field, unpack_scalar};
+use crate::utils::{c_char, deserialize_vector_scalar_field, pack_scalar, unpack_scalar};
 
 pub fn mul_fft(l: &[u8], r: &[u8]) -> Vec<u8> {
     let l = DensePolynomial::from_coefficients_vec(deserialize_vector_scalar_field(l));
@@ -61,12 +59,12 @@ pub fn scalar_add(l: &[u8], r: &[u8]) -> Vec<u8> {
 /// .
 #[no_mangle]
 pub unsafe extern "C" fn rust_wrapper_scalar_add(
-    l_var: *const libc::c_char,
+    l_var: *const c_char,
     l_len: usize,
-    r_var: *const libc::c_char,
+    r_var: *const c_char,
     r_len: usize,
     _out_len: usize,
-    out: *mut libc::c_char,
+    out: *mut c_char,
 ) {
     let l = slice::from_raw_parts(l_var as *const u8, l_len);
     let r = slice::from_raw_parts(r_var as *const u8, r_len);
@@ -82,12 +80,12 @@ pub unsafe extern "C" fn rust_wrapper_scalar_add(
 /// .
 #[no_mangle]
 pub unsafe extern "C" fn rust_wrapper_scalar_mul(
-    l_var: *const libc::c_char,
+    l_var: *const c_char,
     l_len: usize,
-    r_var: *const libc::c_char,
+    r_var: *const c_char,
     r_len: usize,
     _out_len: usize,
-    out: *mut libc::c_char,
+    out: *mut c_char,
 ) {
     let l = slice::from_raw_parts(l_var as *const u8, l_len);
     let r = slice::from_raw_parts(r_var as *const u8, r_len);
@@ -103,12 +101,12 @@ pub unsafe extern "C" fn rust_wrapper_scalar_mul(
 /// .
 #[no_mangle]
 pub unsafe extern "C" fn rust_wrapper_hmul(
-    l_var: *const libc::c_char,
+    l_var: *const c_char,
     l_len: usize,
-    r_var: *const libc::c_char,
+    r_var: *const c_char,
     r_len: usize,
     _out_len: usize,
-    out: *mut libc::c_char,
+    out: *mut c_char,
 ) {
     let l = slice::from_raw_parts(l_var as *const u8, l_len);
     let r = slice::from_raw_parts(r_var as *const u8, r_len);
@@ -124,12 +122,12 @@ pub unsafe extern "C" fn rust_wrapper_hmul(
 /// .
 #[no_mangle]
 pub unsafe extern "C" fn rust_wrapper_div_fft(
-    l_var: *const libc::c_char,
+    l_var: *const c_char,
     l_len: usize,
-    r_var: *const libc::c_char,
+    r_var: *const c_char,
     r_len: usize,
     _out_len: usize,
-    out: *mut libc::c_char,
+    out: *mut c_char,
 ) {
     let l = slice::from_raw_parts(l_var as *const u8, l_len);
     let r = slice::from_raw_parts(r_var as *const u8, r_len);
@@ -145,12 +143,12 @@ pub unsafe extern "C" fn rust_wrapper_div_fft(
 /// .
 #[no_mangle]
 pub unsafe extern "C" fn rust_wrapper_mul_fft(
-    l_var: *const libc::c_char,
+    l_var: *const c_char,
     l_len: usize,
-    r_var: *const libc::c_char,
+    r_var: *const c_char,
     r_len: usize,
     _out_len: usize,
-    out: *mut libc::c_char,
+    out: *mut c_char,
 ) {
     let l = slice::from_raw_parts(l_var as *const u8, l_len);
     let r = slice::from_raw_parts(r_var as *const u8, r_len);

@@ -3,21 +3,22 @@
 module Types where
 
 import           Control.DeepSeq
+import           Data.Bool                  as B
 import           Foreign
 import           Foreign.C.Types
+import           GHC.Generics
 import           Prelude
 
-libPath :: FilePath
-libPath = "libs/librust_wrapper.so"
+import           ZkFold.Control.Conditional
 
 callocForeignPtrBytes :: Int -> IO (ForeignPtr a)
 callocForeignPtrBytes n = do { p <- callocBytes n; newForeignPtr finalizerFree p }
 
 newtype Scalar curve s = RScalar { rawScalar :: s }
-    deriving (NFData)
+    deriving (NFData, Generic)
 
 newtype Point curve s = RPoint { rawPoint :: s }
-    deriving (NFData)
+    deriving (NFData, Generic)
 
 type FCString = ForeignPtr CChar
 
@@ -25,7 +26,9 @@ instance NFData FCString where
     rnf _ = ()
 
 newtype RustData = RData { rawData :: FCString }
-    deriving (NFData)
+    deriving (NFData, Generic)
+
+instance Conditional Bool RustData where bool = B.bool
 
 -- Scalar BLS
 

@@ -1,6 +1,6 @@
 use std::slice;
 
-use crate::utils::{pack_scalar, unpack_scalar};
+use crate::utils::{c_char, pack_scalar, unpack_scalar};
 
 pub fn mul(s1_buffer: &[u8], s2_buffer: &[u8]) -> Vec<u8> {
     let s1 = pack_scalar(s1_buffer).unwrap();
@@ -17,12 +17,12 @@ pub fn mul(s1_buffer: &[u8], s2_buffer: &[u8]) -> Vec<u8> {
 /// .
 #[no_mangle]
 pub unsafe extern "C" fn rust_wrapper_mul(
-    s1_var: *const libc::c_char,
+    s1_var: *const c_char,
     s1_len: usize,
-    s2_var: *const libc::c_char,
+    s2_var: *const c_char,
     s2_len: usize,
     _out_len: usize,
-    out: *mut libc::c_char,
+    out: *mut c_char,
 ) {
     let s1_buffer = slice::from_raw_parts(s1_var as *const u8, s1_len);
     let s2_buffer = slice::from_raw_parts(s2_var as *const u8, s2_len);

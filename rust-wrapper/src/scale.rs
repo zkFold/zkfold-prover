@@ -8,7 +8,7 @@ use ark_msm::msm::VariableBaseMSM;
 use ark_std::log2;
 
 use crate::utils::{
-    deserialize_vector_points, deserialize_vector_scalar_field, pack_point, pack_scalar,
+    c_char, deserialize_vector_points, deserialize_vector_scalar_field, pack_point, pack_scalar,
     unpack_point,
 };
 
@@ -59,12 +59,12 @@ pub fn scale(scalar_buffer: &[u8], point_buffer: &[u8]) -> Vec<u8> {
 /// .
 #[no_mangle]
 pub unsafe extern "C" fn rust_wrapper_msm(
-    points_var: *const libc::c_char,
+    points_var: *const c_char,
     points_len: usize,
-    scalars_var: *const libc::c_char,
+    scalars_var: *const c_char,
     scalars_len: usize,
     _out_len: usize,
-    out: *mut libc::c_char,
+    out: *mut c_char,
 ) {
     let scalar_buffer = slice::from_raw_parts(scalars_var as *const u8, scalars_len);
     let point_buffer = slice::from_raw_parts(points_var as *const u8, points_len);
@@ -80,12 +80,12 @@ pub unsafe extern "C" fn rust_wrapper_msm(
 /// .
 #[no_mangle]
 pub unsafe extern "C" fn rust_wrapper_scale(
-    points_var: *const libc::c_char,
+    points_var: *const c_char,
     points_len: usize,
-    scalars_var: *const libc::c_char,
+    scalars_var: *const c_char,
     scalars_len: usize,
     _out_len: usize,
-    out: *mut libc::c_char,
+    out: *mut c_char,
 ) {
     let scalar_buffer = slice::from_raw_parts(scalars_var as *const u8, scalars_len);
     let point_buffer = slice::from_raw_parts(points_var as *const u8, points_len);

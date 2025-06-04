@@ -15,27 +15,31 @@ ark-std = { version = "0.4.0", default-features = false }
 ark-serialize = { version = "0.4.0", default-features = false }
 ark-bls12-381 = { version = "0.4.0" }
 der = "0.7"
-rand = "0.8"
 num-bigint = "0.4.6"
 num-traits = "0.2.19"
-libc = "0.2.158"
 ark-poly = "0.4.2"
 ark-test-curves = "0.4.2"
+cfg-if = "0.1"
+
+[dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [lib]
-crate-type = ["lib", "cdylib"]
+crate-type = ["lib", "staticlib"]
 
 [[bench]]
 name = "msm_bench"
+path = "benches/msm_bench.rs"
 harness = false
 
 [[bench]]
 name = "div_fft_bench"
+path = "benches/div_fft_bench.rs"
 harness = false
 
 [[bench]]
 name = "mul_fft_bench"
+path = "benches/mul_fft_bench.rs"
 harness = false
 
 [features]

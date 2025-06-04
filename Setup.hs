@@ -1,50 +1,73 @@
-{-# LANGUAGE TemplateHaskell #-}
 import           Control.Exception                  (throwIO)
 import           Control.Monad
-import           Data.Char                          (isSpace)
+import           Data.Functor                       (($>))
 import           Data.List                          (dropWhile, find, findIndex, isPrefixOf, tails)
-import           Data.Maybe                         (fromJust)
+import           Data.Maybe                         (fromMaybe)
+import           Distribution.PackageDescription    hiding (libName)
 import           Distribution.Simple
+import           Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..), localPkgDescr)
+import           Distribution.Simple.Program.Find   (defaultProgramSearchPath, findProgramOnSearchPath)
+import           Distribution.Simple.Setup
 import           Distribution.Types.HookedBuildInfo
-import           PseudoMacros
+import           Distribution.Utils.Path            (unsafeMakeSymbolicPath)
+import           Distribution.Verbosity             (Verbosity)
+import qualified Distribution.Verbosity             as Verbosity
 import           System.Directory
 import           System.Exit
-import           System.Process                     (readProcess, system)
+import           System.FilePath                    ((</>))
+import           System.Process                     (system)
 
 main :: IO ()
-main = defaultMainWithHooks simpleUserHooks
-    {
-      preConf = buildRustLib
-    }
+main = defaultMainWithHooks hooks
+  where
+    hooks = simpleUserHooks
+      { preConf = \_ _ -> execCargoBuild >> return emptyHookedBuildInfo
+      , confHook = \a flags ->
+          confHook simpleUserHooks a flags
+              >>= rsAddDirs
+      }
 
-buildRustLib :: Args -> a -> IO HookedBuildInfo
-buildRustLib _ flags = do
+rsFolder :: FilePath
+rsFolder = "rust-wrapper"
 
-    let file = $__FILE__
-    let pathToDistNewstyle = take (fromJust $ findIndex (isPrefixOf "dist-newstyle") (tails file)) file
+libName :: String
+libName = "librust_wrapper.a"
 
-    isNotDependency <- doesFileExist (pathToDistNewstyle ++ "rust-wrapper/Cargo.toml")
-
-    pathToRustWrapper <- if isNotDependency
-        then return pathToDistNewstyle
-        else do
-          contents <- listDirectory (pathToDistNewstyle ++ "dist-newstyle/src/")
-          print $ contents
-          depLibs <- filterM (\p -> do
-            let prefixCond = isPrefixOf "zkfold-pr" p
-            dirCond <- doesDirectoryExist (pathToDistNewstyle ++ "dist-newstyle/src/" ++ p)
-            return $ dirCond && prefixCond) contents
-          print $ depLibs
-          return $ pathToDistNewstyle ++ "dist-newstyle/src/" ++ (head depLibs) ++ "/"
-
-    buildResult <- system ("cargo +nightly build --release " ++
-      "--manifest-path " ++ pathToRustWrapper ++ "rust-wrapper/Cargo.toml " ++
-      "--artifact-dir=" ++ pathToDistNewstyle ++ "libs/ -Z unstable-options"
-      )
+execCargoBuild :: IO ()
+execCargoBuild = do
+    cargoPath <- findProgramOnSearchPath Verbosity.silent defaultProgramSearchPath "cargo"
+    let cargoExec = case cargoPath of
+            Just (p, _) -> p
+            Nothing     -> "cargo"
+    buildResult <- system $ cargoExec ++ " +nightly build --release --manifest-path rust-wrapper/Cargo.toml -Z unstable-options"
 
     case buildResult of
       ExitSuccess          -> return ()
       ExitFailure exitCode -> do
         throwIO $ userError $ "Build rust library failed with exit code " <> show exitCode
 
-    return emptyHookedBuildInfo
+rsAddDirs :: LocalBuildInfo -> IO LocalBuildInfo
+rsAddDirs lbi' = do
+    dir <- getCurrentDirectory
+    let rustIncludeDir = dir </> rsFolder
+        rustLibDir = dir </> rsFolder </> "target/release"
+
+    (includeRustDir, extraLibDir) <- case findIndex (isPrefixOf "dist-newstyle") (tails dir) of
+      Just ind -> do
+        let pathToDistNewstyle = take ind dir
+            pathToRustLib = pathToDistNewstyle ++ "dist-newstyle"
+        copyFile (rustLibDir </> libName) (pathToRustLib </> libName)
+
+        return (pathToRustLib, pathToRustLib)
+      Nothing -> return (rustLibDir, rustLibDir)
+
+    let updateLbi lbi = lbi{localPkgDescr = updatePkgDescr (localPkgDescr lbi)}
+        updatePkgDescr pkgDescr = pkgDescr{library = updateLib <$> library pkgDescr}
+        updateLib lib = lib{libBuildInfo = updateLibBi (libBuildInfo lib)}
+        updateLibBi libBuild =
+          libBuild
+            { includeDirs = unsafeMakeSymbolicPath includeRustDir : includeDirs libBuild
+            , extraLibDirs = unsafeMakeSymbolicPath extraLibDir : extraLibDirs libBuild
+            }
+
+    pure $ updateLbi lbi'

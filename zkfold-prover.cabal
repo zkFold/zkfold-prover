@@ -8,13 +8,17 @@ maintainer:         info@zkfold.io
 category:           Network
 build-type:         Custom
 
+extra-source-files:
+  rust-wrapper/*.toml
+  rust-wrapper/src/*.rs
+
 custom-setup
-  setup-depends:       
-      base
-    , Cabal
+  setup-depends:
+      base >= 4.7 && < 5
+    , Cabal >= 3.0.0.0
+    , directory >= 1.3.6.0
+    , filepath >= 1.3.0.2
     , process
-    , directory
-    , pseudomacros
 
 Flag Pedantic
     Description: Enable pedantic build with -Werror
@@ -80,6 +84,7 @@ common options
 
 library
   import: options
+  extra-libraries: rust_wrapper
   exposed-modules:
       RustFunctions
     , RustBLS

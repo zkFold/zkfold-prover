@@ -92,3 +92,19 @@ And generate flamegraph from bench (in `rust-wrapper`):
 cargo flamegraph --bench msm_bench
 ```
 
+### Build Rust code into WASM
+
+To build Rust code you neeed to install `wasm32-unknown-unknown` target:
+
+```bash
+rustup target add wasm32-unknown-unknown
+```
+
+Build command:
+
+```bash
+cargo +nightly build --release --target=wasm32-unknown-unknown
+```
+
+Also you can use `wasm32-wasip1`. Installation and building are similar
+
